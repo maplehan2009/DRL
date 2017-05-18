@@ -4,32 +4,32 @@ import matplotlib.pyplot as plt
 from my_cnn_agent import my_cnn_agent
 		
 if __name__=='__main__':
-	env = gym.make('CartPole-v0')
-	robot = my_cnn_agent()
+	#make a new game environment, get the deminsion of the action space and state space
+	env = gym.make('MsPacman-v0')
+	n_action = env.action_space.n
+	shape_state = env.observation_space.shape
+	
+	#initialise the agent
+	agent = my_cnn_agent(n_action, shape_state)
 	
 	count = 0
 	Reward = []
 	N = 10000
 	for i_episode in range(N):
 		Reward_local = []
-		observation = env.reset()
-		s = reform_obs(observation)
+		state_prior= env.reset()
 		for _ in range(100):
 			count += 1
-			#env.render()
-			action = robot.inference(s)
-			observation, reward, done, info = env.step(action)
+			env.render()
+			action = agent.inference(state_prior)
+			state_post, reward, done, info = env.step(action)
 			if done:
 				reward = -5
 			Reward_local.append(reward)
-			s2 = reform_obs(observation)
-			robot.update(s, s2, reward, action, done)
+			agent.update(state_prior, state_post, reward, action, done)
 			if count % 10 == 0:
-				robot.update_nn()
+				agent.update_nn()
 			if done:
 				Reward.append(np.sum(Reward_local))
 				break
-	Reward = np.array(Reward) 
-	y = running_mean(Reward)
-	plt.scatter(range(y.size), y)
-	plt.show()
+	Reward = np.array(Reward)

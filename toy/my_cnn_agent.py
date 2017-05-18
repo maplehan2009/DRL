@@ -2,22 +2,21 @@ import tensorflow as tf
 import numpy
 
 class my_cnn_agent:
-    def __init__(self):
+    def __init__(self, n_action, shape_state):
+    	
         self.train_data_node, self.logits, self.conv1_weights, self.conv1_biases,\
               self.conv2_weights, self.conv2_biases, self.fc1_weights, self.fc1_biases,\
-                      self.fc2_weights, self.fc2_biases = self.createnn()
+                      self.fc2_weights, self.fc2_biases = self.createnn(n_action, shape_state)
         self.createtrainingmethod()
         self.session = tf.InteractiveSession()
         self.session.run(tf.initialize_all_variables())
       
-    def createnn(self):
-        
+    def createnn(self, n_action, shape_state):
+        image_size0, image_size1, num_channels = shape_state
         # This is where training samples and labels are fed to the graph.
         # These placeholder nodes will be fed a batch of training data at each
         # training step using the {feed_dict} argument to the Run() call below.
-        train_data_node = tf.placeholder(
-              tf.float32,
-              shape=(BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS))
+        train_data_node = tf.placeholder(tf.float32, shape=(BATCH_SIZE, image_size0, image_size1, num_channels))
         
         # The variables below hold all the trainable weights. They are passed an
         # initial value which will be assigned when we call:
