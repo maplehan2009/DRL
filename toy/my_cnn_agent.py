@@ -2,25 +2,17 @@ import tensorflow as tf
 import numpy
 
 class my_cnn_agent:
-    def __init__(self, n_action, shape_state):
-    	
+    def __init__(self, n_action, shape_state, BATCH_SIZE):
         self.train_data_node, self.logits, self.conv1_weights, self.conv1_biases,\
               self.conv2_weights, self.conv2_biases, self.fc1_weights, self.fc1_biases,\
-                      self.fc2_weights, self.fc2_biases = self.createnn(n_action, shape_state)
-        self.createtrainingmethod()
+                      self.fc2_weights, self.fc2_biases = self.createnn(n_action, shape_state, BATCH_SIZE)
+        self.createtrainingmethod(BATCH_SIZE)
         self.session = tf.InteractiveSession()
         self.session.run(tf.initialize_all_variables())
       
-    def createnn(self, n_action, shape_state):
+    def createnn(self, n_action, shape_state, BATCH_SIZE):
         image_size0, image_size1, num_channels = shape_state
-        # This is where training samples and labels are fed to the graph.
-        # These placeholder nodes will be fed a batch of training data at each
-        # training step using the {feed_dict} argument to the Run() call below.
         train_data_node = tf.placeholder(tf.float32, shape=(BATCH_SIZE, image_size0, image_size1, num_channels))
-        
-        # The variables below hold all the trainable weights. They are passed an
-        # initial value which will be assigned when we call:
-        # {tf.global_variables_initializer().run()}
         conv1_weights = tf.Variable(
               tf.truncated_normal([5, 5, NUM_CHANNELS, 32],  # 5x5 filter, depth 32.
                                   stddev=0.1,
@@ -31,17 +23,17 @@ class my_cnn_agent:
               seed=SEED, dtype=tf.float32))
         conv2_biases = tf.Variable(tf.constant(0.1, shape=[64], dtype=tf.float32))
         fc1_weights = tf.Variable(  # fully connected, depth 512.
-              tf.truncated_normal([IMAGE_SIZE // 4 * IMAGE_SIZE // 4 * 64, 512],
+              tf.truncated_normal([image_size0 // 4 * image_size1 // 4 * 64, 512],
                                   stddev=0.1,
                                   seed=SEED,
                                   dtype=tf.float32))
         fc1_biases = tf.Variable(tf.constant(0.1, shape=[512], dtype=tf.float32))
-        fc2_weights = tf.Variable(tf.truncated_normal([512, NUM_LABELS],
+        fc2_weights = tf.Variable(tf.truncated_normal([512, n_action],
                                                         stddev=0.1,
                                                         seed=SEED,
                                                         dtype=tf.float32))
         fc2_biases = tf.Variable(tf.constant(
-              0.1, shape=[NUM_LABELS], dtype=tf.float32))
+              0.1, shape=[n_action], dtype=tf.float32))
         # 2D convolution, with 'SAME' padding (i.e. the output feature map has
         # the same size as the input). Note that {strides} is a 4D array whose
         # shape matches the data layout: [image index, y, x, depth].
@@ -80,31 +72,17 @@ class my_cnn_agent:
         return train_data_node, logits, conv1_weights, conv1_biases, conv2_weights, \
                 conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases
                             
-    def createtrainingmethod(self):
+    def createtrainingmethod(self, BATCH_SIZE):
+    	#TODO: modify the code here to adapt to Q learning loss function
         self.train_labels_node = tf.placeholder(tf.int64, shape=(BATCH_SIZE,))
         self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=self.train_labels_node, logits=self.logits))
-        
-        # L2 regularization for the fully connected parameters.
-        regularizers = (tf.nn.l2_loss(self.fc1_weights) + tf.nn.l2_loss(self.fc1_biases) +
-                  tf.nn.l2_loss(self.fc2_weights) + tf.nn.l2_loss(self.fc2_biases))
-        # Add the regularization term to the loss.
-        self.loss += 5e-4 * regularizers
-
-        # Optimizer: set up a variable that's incremented once per batch and
-        # controls the learning rate decay.
         self.batch = tf.Variable(0, dtype=tf.float32)
         # Decay once per epoch, using an exponential schedule starting at 0.01.
-        self.learning_rate = tf.train.exponential_decay(
-              0.01,                # Base learning rate.
-              self.batch * BATCH_SIZE,  # Current index into the dataset.
-              train_size,          # Decay step.
-              0.95,                # Decay rate.
-              staircase=True)
+        self.learning_rate = 0.01
         # Use simple momentum for the optimization.
-        self.optimizer = tf.train.MomentumOptimizer(self.learning_rate,
-                                                 0.9).minimize(self.loss,
-                                                               global_step=self.batch) 
+        self.optimizer = tf.train.Optimizer(self.learning_rate, 0.9).minimize(self.loss, global_step=self.batch) 
+        
     def train_nn(self, batch_data, batch_labels):
         # This dictionary maps the batch data (as a numpy array) to the
         # node in the graph it should be fed to.
@@ -115,19 +93,8 @@ class my_cnn_agent:
         
     def inference(self, data):
         """Get all predictions for a dataset by running it in small batches."""
-        size = data.shape[0]
-        if size < EVAL_BATCH_SIZE:
-          raise ValueError("batch size for evals larger than dataset: %d" % size)
-        predictions = numpy.ndarray(shape=(size, NUM_LABELS), dtype=numpy.float32)
-        for begin in xrange(0, size, EVAL_BATCH_SIZE):
-          end = begin + EVAL_BATCH_SIZE
-          if end <= size:
-            predictions[begin:end, :] = self.session.run(
+        predictions = self.session.run(
                 tf.nn.softmax(self.logits),
-                feed_dict={self.train_data_node: data[begin:end, ...]})
-          else:
-            batch_predictions = self.session.run(
-                tf.nn.softmax(self.logits),
-                feed_dict={self.train_data_node: data[-EVAL_BATCH_SIZE:, ...]})
+                feed_dict={self.train_data_node: data})
             predictions[begin:, :] = batch_predictions[begin - size:, :]
-        return predictions
+        return np.argmax(predictions)

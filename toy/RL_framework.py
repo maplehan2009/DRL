@@ -3,6 +3,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from my_cnn_agent import my_cnn_agent
 		
+BATCH_SIZE = 10
+
 if __name__=='__main__':
 	#make a new game environment, get the deminsion of the action space and state space
 	env = gym.make('MsPacman-v0')
@@ -10,7 +12,7 @@ if __name__=='__main__':
 	shape_state = env.observation_space.shape
 	
 	#initialise the agent
-	agent = my_cnn_agent(n_action, shape_state)
+	agent = my_cnn_agent(n_action, shape_state, BATCH_SIZE)
 	
 	count = 0
 	Reward = []
