@@ -27,51 +27,49 @@ EVAL_FREQUENCY = 100  # Number of steps between evaluations.
 
 
 def maybe_download(filename):
-  """Download the data from Yann's website, unless it's already here."""
-  if not tf.gfile.Exists(WORK_DIRECTORY):
-    tf.gfile.MakeDirs(WORK_DIRECTORY)
-  filepath = os.path.join(WORK_DIRECTORY, filename)
-  if not tf.gfile.Exists(filepath):
-    filepath, _ = urllib.request.urlretrieve(SOURCE_URL + filename, filepath)
-    with tf.gfile.GFile(filepath) as f:
-      size = f.size()
-    print('Successfully downloaded', filename, size, 'bytes.')
-  return filepath
+	"""Download the data from Yann's website, unless it's already here."""
+	if not tf.gfile.Exists(WORK_DIRECTORY):
+		tf.gfile.MakeDirs(WORK_DIRECTORY)
+	filepath = os.path.join(WORK_DIRECTORY, filename)
+	if not tf.gfile.Exists(filepath):
+		filepath, _ = urllib.request.urlretrieve(SOURCE_URL + filename, filepath)
+		with tf.gfile.GFile(filepath) as f:
+	  		size = f.size()
+		print('Successfully downloaded', filename, size, 'bytes.')
+	return filepath
 
 
 def extract_data(filename, num_images):
-  """Extract the images into a 4D tensor [image index, y, x, channels].
-  Values are rescaled from [0, 255] down to [-0.5, 0.5].
-  """
-  print('Extracting', filename)
-  with gzip.open(filename) as bytestream:
-    bytestream.read(16)
-    buf = bytestream.read(IMAGE_SIZE * IMAGE_SIZE * num_images * NUM_CHANNELS)
-    data = numpy.frombuffer(buf, dtype=numpy.uint8).astype(numpy.float32)
-    data = (data - (PIXEL_DEPTH / 2.0)) / PIXEL_DEPTH
-    data = data.reshape(num_images, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS)
-    return data
+	"""Extract the images into a 4D tensor [image index, y, x, channels].
+	Values are rescaled from [0, 255] down to [-0.5, 0.5].
+	"""
+	print('Extracting', filename)
+	with gzip.open(filename) as bytestream:
+		bytestream.read(16)
+		buf = bytestream.read(IMAGE_SIZE * IMAGE_SIZE * num_images * NUM_CHANNELS)
+		data = numpy.frombuffer(buf, dtype=numpy.uint8).astype(numpy.float32)
+		data = (data - (PIXEL_DEPTH / 2.0)) / PIXEL_DEPTH
+		data = data.reshape(num_images, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS)
+		return data
 
 
 def extract_labels(filename, num_images):
-  """Extract the labels into a vector of int64 label IDs."""
-  print('Extracting', filename)
-  with gzip.open(filename) as bytestream:
-    bytestream.read(8)
-    buf = bytestream.read(1 * num_images)
-    labels = numpy.frombuffer(buf, dtype=numpy.uint8).astype(numpy.int64)
-  return labels
+	"""Extract the labels into a vector of int64 label IDs."""
+	print('Extracting', filename)
+	with gzip.open(filename) as bytestream:
+		bytestream.read(8)
+		buf = bytestream.read(1 * num_images)
+		labels = numpy.frombuffer(buf, dtype=numpy.uint8).astype(numpy.int64)
+	return labels
 
 def error_rate(predictions, labels):
-  """Return the error rate based on dense predictions and sparse labels."""
-  return 100.0 - (
-      100.0 *
-      numpy.sum(numpy.argmax(predictions, 1) == labels) /
-      predictions.shape[0])
+	"""Return the error rate based on dense predictions and sparse labels."""
+	return 100.0 - (100.0 * numpy.sum(numpy.argmax(predictions, 1) == labels) / predictions.shape[0])
+
 
 class my_agent:
     def __init__(self):
-        self.train_data_node, self.logits, self.conv1_weights, self.conv1_biases,\
+        self.train_data_node, self.logits, self.logits_infer, self.conv1_weights, self.conv1_biases,\
               self.conv2_weights, self.conv2_biases, self.fc1_weights, self.fc1_biases,\
                       self.fc2_weights, self.fc2_biases = self.createnn()
         self.createtrainingmethod()
@@ -138,15 +136,15 @@ class my_agent:
         # Reshape the feature map cuboid into a 2D matrix to feed it to the
         # fully connected layers.
         pool_shape = pool2.get_shape().as_list()
-        reshape = tf.reshape(
-            pool2,
-            [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
+        reshape = tf.reshape(pool2, [pool_shape[0], pool_shape[1] * pool_shape[2] * pool_shape[3]])
         # Fully connected layer. Note that the '+' operation automatically
         # broadcasts the biases.
-        hidden = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        hidden1 = tf.nn.relu(tf.matmul(reshape, fc1_weights) + fc1_biases)
+        hidden2 = tf.nn.dropout(hidden1, 0.5, seed=SEED)
         # activations such that no rescaling is needed at evaluation time.
-        logits = tf.matmul(hidden, fc2_weights) + fc2_biases
-        return train_data_node, logits, conv1_weights, conv1_biases, conv2_weights, \
+        logits = tf.matmul(hidden2, fc2_weights) + fc2_biases
+        logits_infer = tf.matmul(hidden1, fc2_weights) + fc2_biases
+        return train_data_node, logits, logits_infer, conv1_weights, conv1_biases, conv2_weights, \
                 conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases
                             
     def createtrainingmethod(self):
@@ -191,11 +189,11 @@ class my_agent:
           end = begin + EVAL_BATCH_SIZE
           if end <= size:
             predictions[begin:end, :] = self.session.run(
-                tf.nn.softmax(self.logits),
+                tf.nn.softmax(self.logits_infer),
                 feed_dict={self.train_data_node: data[begin:end, ...]})
           else:
             batch_predictions = self.session.run(
-                tf.nn.softmax(self.logits),
+                tf.nn.softmax(self.logits_infer),
                 feed_dict={self.train_data_node: data[-EVAL_BATCH_SIZE:, ...]})
             predictions[begin:, :] = batch_predictions[begin - size:, :]
         return predictions
