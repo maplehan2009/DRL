@@ -171,9 +171,8 @@ class my_agent:
               0.95,                # Decay rate.
               staircase=True)
         # Use simple momentum for the optimization.
-        self.optimizer = tf.train.MomentumOptimizer(self.learning_rate,
-                                                 0.9).minimize(self.loss,
-                                                               global_step=self.batch) 
+        self.optimizer = tf.train.MomentumOptimizer(self.learning_rate, 0.9).minimize(self.loss, global_step=self.batch) 
+        
     def train_nn(self, batch_data, batch_labels):
         # This dictionary maps the batch data (as a numpy array) to the
         # node in the graph it should be fed to.
