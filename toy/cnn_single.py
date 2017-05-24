@@ -69,21 +69,22 @@ def error_rate(predictions, labels):
 
 class my_agent:
     def __init__(self):
+    	"""Initialise the neural network of the agent"""
         self.train_data_node, self.logits, self.logits_infer, self.conv1_weights, self.conv1_biases,\
               self.conv2_weights, self.conv2_biases, self.fc1_weights, self.fc1_biases,\
-                      self.fc2_weights, self.fc2_biases = self.createnn()
+                      self.fc2_weights, self.fc2_biases = self.create_nn()
         self.createtrainingmethod()
-        self.session = tf.InteractiveSession()
+        #Sometimes InteractiveSession causes problems, do not figure out why
+        #self.session = tf.InteractiveSession()
+        self.session= tf.Session()
         self.session.run(tf.initialize_all_variables())
       
-    def createnn(self):
-        
+    def create_nn(self):
+        """Build the neural network's graph"""
         # This is where training samples and labels are fed to the graph.
         # These placeholder nodes will be fed a batch of training data at each
         # training step using the {feed_dict} argument to the Run() call below.
-        train_data_node = tf.placeholder(
-              tf.float32,
-              shape=(BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS))
+        train_data_node = tf.placeholder(tf.float32, shape=(BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS))
         
         # The variables below hold all the trainable weights. They are passed an
         # initial value which will be assigned when we call:
@@ -143,11 +144,13 @@ class my_agent:
         hidden2 = tf.nn.dropout(hidden1, 0.5, seed=SEED)
         # activations such that no rescaling is needed at evaluation time.
         logits = tf.matmul(hidden2, fc2_weights) + fc2_biases
+        #logits_infer is used for infering purpose in the testin process
         logits_infer = tf.matmul(hidden1, fc2_weights) + fc2_biases
         return train_data_node, logits, logits_infer, conv1_weights, conv1_biases, conv2_weights, \
                 conv2_biases, fc1_weights, fc1_biases, fc2_weights, fc2_biases
                             
     def createtrainingmethod(self):
+    	"""Create a training method: optimizer"""
         self.train_labels_node = tf.placeholder(tf.int64, shape=(BATCH_SIZE,))
         self.loss = tf.reduce_mean(tf.nn.sparse_softmax_cross_entropy_with_logits(
                 labels=self.train_labels_node, logits=self.logits))
@@ -172,6 +175,7 @@ class my_agent:
         self.optimizer = tf.train.MomentumOptimizer(self.learning_rate, 0.9).minimize(self.loss, global_step=self.batch) 
         
     def train_nn(self, batch_data, batch_labels):
+    	"""Train the netzork with batch_data as X and batch_labels as Y""" 
         # This dictionary maps the batch data (as a numpy array) to the
         # node in the graph it should be fed to.
         feed_dict = {self.train_data_node: batch_data,
@@ -180,7 +184,7 @@ class my_agent:
         self.session.run(self.optimizer, feed_dict=feed_dict)
         
     def inference(self, data):
-        """Get all predictions for a dataset by running it in small batches."""
+        """Infer the results by taking data as input"""
         size = data.shape[0]
         if size < EVAL_BATCH_SIZE:
           raise ValueError("batch size for evals larger than dataset: %d" % size)
@@ -220,10 +224,13 @@ if __name__ == '__main__':
     num_epochs = NUM_EPOCHS
     train_size = train_labels.shape[0]
     
+    # Initialise the agent
     agent = my_agent()
     
     print('Finish initialisation')
+    
     for step in xrange(int(num_epochs * train_size) // BATCH_SIZE):
+    	# training process
         offset = (step * BATCH_SIZE) % (train_size - BATCH_SIZE)
         batch_data = train_data[offset:(offset + BATCH_SIZE), ...]
         batch_labels = train_labels[offset:(offset + BATCH_SIZE)]
@@ -236,8 +243,8 @@ if __name__ == '__main__':
             print('Validation error: %.1f%%' % error_rate(
                     agent.inference(validation_data), validation_labels))
             sys.stdout.flush()
-    # Finally print the result!
-    
     print('Finish Training')
+    
+    # testing process
     test_error = error_rate(agent.inference(test_data), test_labels)
     print('Test error: %.1f%%' % test_error)    
