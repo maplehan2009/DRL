@@ -15,6 +15,10 @@ The link to my report:
 
 https://www.overleaf.com/read/rqsmszppcryz
 
+Command to run the A3C agent:
+
+python train.py --num-workers 2 --env-id PongDeterministic-v3 --log-dir /tmp/pong
+
 Best,
 
 Jingtao
