@@ -13,9 +13,7 @@ def discount(x, gamma):
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
 def process_rollout(rollout, gamma, lambda_=1.0):
-    """
-given a rollout, compute its returns and the advantage
-"""
+    """given a rollout, compute its returns and the advantage"""
     batch_si = np.asarray(rollout.states)
     batch_a = np.asarray(rollout.actions)
     rewards = np.asarray(rollout.rewards)
@@ -35,10 +33,8 @@ Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
 
 ############################################################################################
 class PartialRollout(object):
-    """
-a piece of a complete rollout.  We run our agent, and process its experience
-once it has processed enough steps.
-"""
+    """a piece of a complete rollout.  We run our agent, and process its experience
+	once it has processed enough steps."""
     def __init__(self):
         self.states = []
         self.actions = []
@@ -68,11 +64,10 @@ once it has processed enough steps.
 
 ############################################################################################
 class RunnerThread(threading.Thread):
-    """
-One of the key distinctions between a normal environment and a universe environment
-is that a universe environment is _real time_.  This means that there should be a thread
-that would constantly interact with the environment and tell it what to do.  This thread is here.
-"""
+    """One of the key distinctions between a normal environment and a universe environment
+	is that a universe environment is _real time_.  This means that there should be a thread
+	that would constantly interact with the environment and tell it what to do.  This thread is here."""
+	
     def __init__(self, env, policy, num_local_steps, visualise):
         threading.Thread.__init__(self)
         self.queue = queue.Queue(5)
@@ -106,11 +101,10 @@ that would constantly interact with the environment and tell it what to do.  Thi
 ############################################################################################
 
 def env_runner(env, policy, num_local_steps, summary_writer, render):
-    """
-The logic of the thread runner.  In brief, it constantly keeps on running
-the policy, and as long as the rollout exceeds a certain length, the thread
-runner appends the policy to the queue.
-"""
+    """The logic of the thread runner.  In brief, it constantly keeps on running
+	the policy, and as long as the rollout exceeds a certain length, the thread
+	runner appends the policy to the queue."""
+	
     last_state = env.reset()
     last_features = policy.get_initial_features()
     length = 0
@@ -118,12 +112,15 @@ runner appends the policy to the queue.
 
     while True:
         terminal_end = False
+        # bad naming. rollout is an instance of the class PartialRollout defined above
         rollout = PartialRollout()
 
         for _ in range(num_local_steps):
+        	# policy represents the local network here. One day I should change these bad names
             fetched = policy.act(last_state, *last_features)
+            # action is the action vector. value_ is the V value. features is hidden states [c, h]
             action, value_, features = fetched[0], fetched[1], fetched[2:]
-            # argmax to convert from one-hot
+            # argmax to convert from one-hot. Perform one action
             state, reward, terminal, info = env.step(action.argmax())
             if render:
                 env.render()
@@ -189,7 +186,7 @@ should be computed.
             self.ac = tf.placeholder(tf.float32, [None, env.action_space.n], name="ac")
             # adv : advantage value G_t - V
             self.adv = tf.placeholder(tf.float32, [None], name="adv")
-            # r : reward
+            # r : total discounted reward
             self.r = tf.placeholder(tf.float32, [None], name="r")
 			# pi.logits : unnormalised policy(a | s). So log_prob_tf is log policy distribution
             log_prob_tf = tf.nn.log_softmax(pi.logits)
@@ -267,9 +264,7 @@ should be computed.
         self.summary_writer = summary_writer
 
     def pull_batch_from_queue(self):
-        """
-self explanatory:  take a rollout from the queue of the thread runner.
-"""
+        """self explanatory:  take a rollout from the queue of the thread runner."""
         rollout = self.runner.queue.get(timeout=600.0)
         while not rollout.terminal:
             try:
