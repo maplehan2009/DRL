@@ -33,6 +33,7 @@ given a rollout, compute its returns and the advantage
 
 Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
 
+############################################################################################
 class PartialRollout(object):
     """
 a piece of a complete rollout.  We run our agent, and process its experience
@@ -65,6 +66,7 @@ once it has processed enough steps.
         self.terminal = other.terminal
         self.features.extend(other.features)
 
+############################################################################################
 class RunnerThread(threading.Thread):
     """
 One of the key distinctions between a normal environment and a universe environment
@@ -101,7 +103,7 @@ that would constantly interact with the environment and tell it what to do.  Thi
 
             self.queue.put(next(rollout_provider), timeout=600.0)
 
-
+############################################################################################
 
 def env_runner(env, policy, num_local_steps, summary_writer, render):
     """
@@ -158,6 +160,7 @@ runner appends the policy to the queue.
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue
         yield rollout
 
+############################################################################################
 class A3C(object):
     def __init__(self, env, task, visualise):
         """
@@ -178,14 +181,19 @@ should be computed.
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
+            	# pi is a local network instead of the policy function
                 self.local_network = pi = LSTMPolicy(env.observation_space.shape, env.action_space.n)
                 pi.global_step = self.global_step
-
+               
+			# ac : action vector
             self.ac = tf.placeholder(tf.float32, [None, env.action_space.n], name="ac")
+            # adv : advantage value G_t - V
             self.adv = tf.placeholder(tf.float32, [None], name="adv")
+            # r : reward
             self.r = tf.placeholder(tf.float32, [None], name="r")
-
+			# pi.logits : unnormalised policy(a | s). So log_prob_tf is log policy distribution
             log_prob_tf = tf.nn.log_softmax(pi.logits)
+            # prob_tf : normalized policy distribution
             prob_tf = tf.nn.softmax(pi.logits)
 
             # the "policy gradients" loss:  its derivative is precisely the policy gradient
@@ -196,8 +204,9 @@ should be computed.
             # loss of value function
             vf_loss = 0.5 * tf.reduce_sum(tf.square(pi.vf - self.r))
             entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
-
+			# bs : batch size
             bs = tf.to_float(tf.shape(pi.x)[0])
+            # Total Loss function, may tune the lambda value here.
             self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
 
             # 20 represents the number of "local steps":  the number of timesteps
@@ -206,12 +215,15 @@ should be computed.
             # on the one hand;  but on the other hand, we get less frequent parameter updates, which
             # slows down learning.  In this code, we found that making local steps be much
             # smaller than 20 makes the algorithm more difficult to tune and to get to work.
+            
+            # RunnerThread is a class. See definition above.
             self.runner = RunnerThread(env, pi, 20, visualise)
 
-
+			# Constructs symbolic partial derivatives of self.loss w.r.t. variable in pi.var_list
             grads = tf.gradients(self.loss, pi.var_list)
 
             if use_tf12_api:
+            	# summary is about the tensorboard. It exports the information about the model
                 tf.summary.scalar("model/policy_loss", pi_loss / bs)
                 tf.summary.scalar("model/value_loss", vf_loss / bs)
                 tf.summary.scalar("model/entropy", entropy / bs)
@@ -228,17 +240,24 @@ should be computed.
                 tf.scalar_summary("model/grad_global_norm", tf.global_norm(grads))
                 tf.scalar_summary("model/var_global_norm", tf.global_norm(pi.var_list))
                 self.summary_op = tf.merge_all_summaries()
-
+			
+			# clipping to avoid the exploding or vanishing gradient values
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
 
-            # copy weights from the parameter server to the local model
+            # copy weights from the parameter server to the local model by tf.assign
+            # self.network is the global network while pi is the local one
+            # tf.group : An Operation that executes all its inputs.
             self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
-
+            
+            # list zip gives [(grad value, variable name), () ... ()]
             grads_and_vars = list(zip(grads, self.network.var_list))
+            
+            # inc_step maps to the ops that global step += some value
             inc_step = self.global_step.assign_add(tf.shape(pi.x)[0])
 
             # each worker has a different set of adam optimizer parameters
             opt = tf.train.AdamOptimizer(1e-4)
+            # tf.group's function is simply execute the two ops in the same time in one command
             self.train_op = tf.group(opt.apply_gradients(grads_and_vars), inc_step)
             self.summary_writer = None
             self.local_steps = 0
@@ -292,3 +311,4 @@ server.
             self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
             self.summary_writer.flush()
         self.local_steps += 1
+        

@@ -81,6 +81,7 @@ class LSTMPolicy(object):
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])
         self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
         self.sample = categorical_sample(self.logits, ac_space)[0, :]
+        # list of the input variables, used in the gradient calculation of the loss function
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
     def get_initial_features(self):
