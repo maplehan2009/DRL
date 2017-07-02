@@ -274,11 +274,9 @@ should be computed.
         return rollout
 
     def process(self, sess):
-        """
-process grabs a rollout that's been produced by the thread runner,
-and updates the parameters.  The update is then sent to the parameter
-server.
-"""
+        """process grabs a rollout that's been produced by the thread runner,
+		and updates the parameters.  The update is then sent to the parameter
+		server."""
 
         sess.run(self.sync)  # copy weights from shared to local
         rollout = self.pull_batch_from_queue()
