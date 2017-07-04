@@ -66,6 +66,7 @@ class LSTMPolicy(object):
         self.state_init = [c_init, h_init]
         c_in = tf.placeholder(tf.float32, [1, lstm.state_size.c])
         h_in = tf.placeholder(tf.float32, [1, lstm.state_size.h])
+        self.h_in = h_in
         self.state_in = [c_in, h_in]
 
         if use_tf100_api:
@@ -76,6 +77,7 @@ class LSTMPolicy(object):
             lstm, x, initial_state=state_in, sequence_length=step_size,
             time_major=False)
         lstm_c, lstm_h = lstm_state
+        self.h_out = lstm_h
         x = tf.reshape(lstm_outputs, [-1, size])
         self.logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01))
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])

@@ -203,8 +203,12 @@ should be computed.
             entropy = - tf.reduce_sum(prob_tf * log_prob_tf)
 			# bs : batch size
             bs = tf.to_float(tf.shape(pi.x)[0])
+            
+            # option loss
+            h_loss = tf.reduce_sum(tf.square(pi.h_in - pi.h_out))
+            
             # Total Loss function, may tune the lambda value here.
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
+            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01 + 0.1 * h_loss
 
             # 20 represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
