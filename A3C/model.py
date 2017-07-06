@@ -46,6 +46,7 @@ def categorical_sample(logits, d):
 
 class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space):
+    	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
 
         for i in range(4):
