@@ -12,7 +12,7 @@ def get_df(df, events):
 
 if __name__ == '__main__':
 	folders = ['Data_Basic_A3C', 'Data_1level_A3C', 'Data_2level_A3C', 'Data_3level_A3C']
-	#game = 'pong'
+	game = 'pong'
 	#game = 'pacman'
 	game = 'breakout'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'

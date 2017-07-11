@@ -7,7 +7,7 @@ plt.style.use('ggplot')
 def moving_average(x):
 	x = list(x)
 	N = len(x)
-	window = 16
+	window = 100
 	x_new = []
 	for i in range(N-window):
 		x_new.append(np.mean(x[i:i+window]))
