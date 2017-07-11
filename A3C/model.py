@@ -2,8 +2,11 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 import distutils.version
+# use_tf100_api is a boolean flag : True means tf version is greater than 1.0.0
+# I am using the tf version 1.2.1
 use_tf100_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('1.0.0')
 
+############################################################################################
 def normalized_columns_initializer(std=1.0):
     def _initializer(shape, dtype=None, partition_info=None):
         out = np.random.randn(*shape).astype(np.float32)
@@ -12,6 +15,9 @@ def normalized_columns_initializer(std=1.0):
     return _initializer
 
 def flatten(x):
+	# x is a tf.Variable. x.get_shape returns tf dimension type. then as_list change it to the python list type.
+	# [1:] takes the dimensions except the first one which is the batch size. 
+	# In short, this function casts [batchsize, x, y] to [batchsize, x * y] image pixels to a vector.
     return tf.reshape(x, [-1, np.prod(x.get_shape().as_list()[1:])])
 
 def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", dtype=tf.float32, collections=None):
@@ -36,11 +42,18 @@ def conv2d(x, num_filters, name, filter_size=(3, 3), stride=(1, 1), pad="SAME", 
         return tf.nn.conv2d(x, w, stride_shape, pad) + b
 
 def linear(x, size, name, initializer=None, bias_init=0):
+	# a FC layer without any activation function
     w = tf.get_variable(name + "/w", [x.get_shape()[1], size], initializer=initializer)
     b = tf.get_variable(name + "/b", [size], initializer=tf.constant_initializer(bias_init))
     return tf.matmul(x, w) + b
 
 def categorical_sample(logits, d):
+	# d is the length of the vector logits
+	# tf.multinomial will firstly take the softmax of the logits vector to have a distribution, 
+	# then sample according to this distribution.
+	# logits - max(logits) is a computational trick. It can avoid the extreme large value of exp(.) but has no influence on the final result.
+	# tf.squeeze casts [[1]] to [1]
+	# in short, this function sample an one-hot action vector according to the pi(a | s) distribution
     value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
     return tf.one_hot(value, d)
 
