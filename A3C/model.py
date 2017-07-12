@@ -60,11 +60,16 @@ def categorical_sample(logits, d):
 class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space):
     	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
+    	# x is the input images with dimension [batchsize, observation dimension]
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
 
+		# 4 layers of CNN 
+		# tf.nn.elu means Exponential Linear Units. Like Sigmoid and RELU, it is a kind of activation function
         for i in range(4):
             x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+            
         # introduce a "fake" batch dimension of 1 after flatten so that we can do LSTM over time dim
+        
         x = tf.expand_dims(flatten(x), [0])
 
         size = 256
@@ -118,14 +123,18 @@ class LSTMPolicy_beta(object):
 
         for i in range(4):
             x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+        # tf.expand_dims inserts a dimension of 1 into a tensor's shape
         # introduce a "fake" batch dimension of 1 after flatten so that we can do LSTM over time dim
         x = tf.expand_dims(flatten(x), [0])
-
+		
+		# size of h, the hidden state vector
         size = 256
         if use_tf100_api:
             lstm = rnn.BasicLSTMCell(size, state_is_tuple=True)
         else:
             lstm = rnn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)
+        
+        # state_size has two fields: c and h
         self.state_size = lstm.state_size
         step_size = tf.shape(self.x)[:1]
 
