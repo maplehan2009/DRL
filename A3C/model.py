@@ -136,6 +136,7 @@ class LSTMPolicy_beta(object):
         
         # state_size has two fields: c and h
         self.state_size = lstm.state_size
+        # step_size equals to the batch size
         step_size = tf.shape(self.x)[:1]
 
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
@@ -150,9 +151,7 @@ class LSTMPolicy_beta(object):
             state_in = rnn.LSTMStateTuple(c_in, h_in)
         else:
             state_in = rnn.rnn_cell.LSTMStateTuple(c_in, h_in)
-        lstm_outputs, lstm_state = tf.nn.dynamic_rnn(
-            lstm, x, initial_state=state_in, sequence_length=step_size,
-            time_major=False)
+        lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
         lstm_c, lstm_h = lstm_state
         self.h_out = lstm_h
         x = tf.reshape(lstm_outputs, [-1, size])
