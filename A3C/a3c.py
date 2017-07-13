@@ -8,6 +8,7 @@ import scipy.signal
 import threading
 import distutils.version
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
 
 ############################################################################################
 def discount(x, gamma):
@@ -33,8 +34,6 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     features = rollout.features[0]
     return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
 
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
-
 ############################################################################################
 class PartialRollout(object):
     """a piece of a complete rollout.  We run our agent, and process its experience
@@ -44,6 +43,9 @@ class PartialRollout(object):
         self.actions = []
         self.rewards = []
         self.values = []
+        # r means the state value V(s') where s' is the posteriori state
+        # As G = r + gamma * V. So V can be regarded as a pseudo reward here.
+        # Anyway V may be a better name for r
         self.r = 0.0
         self.terminal = False
         self.features = []
@@ -124,7 +126,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
         for _ in range(num_local_steps):
         	# policy represents the local network here. One day I should change these bad names
             fetched = policy.act(last_state, *last_features)
-            # action is the action vector. value_ is the V value. features is hidden states [c, h]
+            # action is the action vector in one-hot form. value_ is the V value. features is output hidden states [c, h]
             action, value_, features = fetched[0], fetched[1], fetched[2:]
             # argmax to convert from one-hot. Perform one action
             state, reward, terminal, info = env.step(action.argmax())
@@ -151,16 +153,22 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
                 terminal_end = True
                 if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
                     last_state = env.reset()
-                last_features = policy.get_initial_features()
-                print("Episode finished. Sum of rewards: %d. Length: %d" % (rewards, length))
+                # After each episode, the author resets the c and h to zeros
+                # I may keep the value of c since c has the meaning of memory. And set h to zero since h has the meaning of option.
+                #last_features = policy.get_initial_features()
+                last_features[1] = policy.get_initial_features()[1]
+                #print("Episode finished. Sum of rewards: %d. Length: %d" % (rewards, length))
                 length = 0
                 rewards = 0
                 break
 
         if not terminal_end:
+        	# rollout.r means state value of the posteriori state
             rollout.r = policy.value(last_state, *last_features)
 
         # once we have enough experience, yield it, and have the ThreadRunner place it on a queue
+        # yield creates a generator.
+        # More explanations in https://stackoverflow.com/questions/231767/what-does-the-yield-keyword-do-in-python
         yield rollout
 
 ############################################################################################
@@ -237,15 +245,6 @@ class A3C(object):
                 tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
                 tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
                 self.summary_op = tf.summary.merge_all()
-
-            else:
-                tf.scalar_summary("model/policy_loss", pi_loss / bs)
-                tf.scalar_summary("model/value_loss", vf_loss / bs)
-                tf.scalar_summary("model/entropy", entropy / bs)
-                tf.image_summary("model/state", pi.x)
-                tf.scalar_summary("model/grad_global_norm", tf.global_norm(grads))
-                tf.scalar_summary("model/var_global_norm", tf.global_norm(pi.var_list))
-                self.summary_op = tf.merge_all_summaries()
 			
 			# clipping to avoid the exploding or vanishing gradient values
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
