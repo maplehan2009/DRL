@@ -84,7 +84,7 @@ class LSTMPolicy(object):
         # state_size has two fields: c and h
         self.state_size = lstm.state_size
         # step_size equals to the batch size
-        step_size = tf.shape(self.x)[:1]
+        step_size = tf.shape(self.x)[1:2]
 
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
         h_init = np.zeros((1, lstm.state_size.h), np.float32)
@@ -130,7 +130,7 @@ class LSTMPolicy(object):
 class LSTMPolicy_beta(object):
     def __init__(self, ob_space, ac_space):
     	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
-    	# x is the input images with dimension [batchsize, observation dimension]
+    	# x is the input images with dimension [sequence size, observation dimension]
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
 
 		# 4 layers of CNN 
@@ -139,7 +139,8 @@ class LSTMPolicy_beta(object):
             x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
             
         # tf.expand_dims inserts a dimension of 1 into a tensor's shape
-        # introduce a "fake" batch dimension of 1 after flatten so that we can do LSTM over time dim
+        # introduce a "fake" batch dimension of 1 after flatten
+        # so that shape of x becomes [batchsize=1, sequence size = None, input size = pixel number]
         x = tf.expand_dims(flatten(x), [0])
 		
 		# size of h, the hidden state vector
@@ -149,17 +150,16 @@ class LSTMPolicy_beta(object):
         else:
             lstm = rnn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)
         
-        # state_size has two fields: c and h
+        # state_size has two fields: c and h. In fact state_size.c = state_size.h = size
         self.state_size = lstm.state_size
         # step_size equals to the batch size
-        step_size = tf.shape(self.x)[:1]
+        step_size = tf.shape(self.x)[1:2]
 
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
         h_init = np.zeros((1, lstm.state_size.h), np.float32)
         self.state_init = [c_init, h_init]
         c_in = tf.placeholder(tf.float32, [1, lstm.state_size.c])
         h_in = tf.placeholder(tf.float32, [1, lstm.state_size.h])
-        self.h_in = h_in
         self.state_in = [c_in, h_in]
 
         if use_tf100_api:
@@ -170,7 +170,6 @@ class LSTMPolicy_beta(object):
         lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
         # the dim of lstm_c and lstm_h ?
         lstm_c, lstm_h = lstm_state
-        self.h_out = lstm_h
         x = tf.reshape(lstm_outputs, [-1, size])
         # logits is pi(a | s)
         self.logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01))

@@ -9,7 +9,11 @@ import threading
 import distutils.version
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 
+############################################################################################
 def discount(x, gamma):
+	# Given a reward signal x = [x_0, x_1 ... x_n]. Calculate the discounted reward for each time step.
+	# Thus the result is discounted reward signal [G_0, G_1 ... G_n]
+	# G_t= x_t + gamma * x_t+1 + gamma^2 * x_t+2 + ... + gamma^(n-t) * x_n 
     return scipy.signal.lfilter([1], [1, -gamma], x[::-1], axis=0)[::-1]
 
 def process_rollout(rollout, gamma, lambda_=1.0):
@@ -90,6 +94,7 @@ class RunnerThread(threading.Thread):
             self._run()
 
     def _run(self):
+    	# At last, RunnerThread will execute this part of code
         rollout_provider = env_runner(self.env, self.policy, self.num_local_steps, self.summary_writer, self.visualise)
         while True:
             # the timeout variable exists because apparently, if one worker dies, the other workers
@@ -104,15 +109,16 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
     """The logic of the thread runner.  In brief, it constantly keeps on running
 	the policy, and as long as the rollout exceeds a certain length, the thread
 	runner appends the policy to the queue."""
-	
+	# restart the game, last_state is the first frame of pixels
     last_state = env.reset()
+    # a vector whose every element is zero
     last_features = policy.get_initial_features()
     length = 0
     rewards = 0
 
     while True:
         terminal_end = False
-        # bad naming. rollout is an instance of the class PartialRollout defined above
+        # unclear naming. rollout is an instance of the class PartialRollout defined above
         rollout = PartialRollout()
 
         for _ in range(num_local_steps):
@@ -160,12 +166,10 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
 ############################################################################################
 class A3C(object):
     def __init__(self, env, task, visualise):
-        """
-An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
-Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
-But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
-should be computed.
-"""
+        """An implementation of the A3C algorithm that is reasonably well-tuned for the VNC environments.
+		Below, we will have a modest amount of complexity due to the way TensorFlow handles data parallelism.
+		But overall, we'll define the model, specify its inputs, and describe how the policy gradients step
+		should be computed."""
 
         self.env = env
         self.task = task
@@ -209,7 +213,7 @@ should be computed.
             h_loss = tf.square(tf.reduce_sum(tf.square(pi.h_in)) - tf.reduce_sum(tf.square(pi.h_out)))
             
             # Total Loss function, may tune the lambda value here.
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01 + 0.01 * h_loss
+            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
 
             # 20 represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
@@ -280,7 +284,7 @@ should be computed.
 
     def process(self, sess):
         """process grabs a rollout that's been produced by the thread runner,
-		and updates the parameters.  The update is then sent to the parameter
+		and updates the parameters. The update is then sent to the parameter
 		server."""
 
         sess.run(self.sync)  # copy weights from shared to local

@@ -1,4 +1,4 @@
-from tensorflow.python.summary import event_accumulator
+from tensorflow.tensorboard.backend.event_processing import event_accumulator
 import numpy as np
 import pandas as pd
 from os import listdir
