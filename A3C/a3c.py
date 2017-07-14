@@ -19,13 +19,21 @@ def discount(x, gamma):
 
 def process_rollout(rollout, gamma, lambda_=1.0):
     """given a rollout, compute its returns and the advantage"""
+    # Normally, each field of rollout is a list with a dimension not greater than 20
+    # batch_si : a batch of states
     batch_si = np.asarray(rollout.states)
+    # batch_a : a batch of actions
     batch_a = np.asarray(rollout.actions)
+    # rewards : a signal of rewards
     rewards = np.asarray(rollout.rewards)
+    # vpred_t : a signal of V state values
     vpred_t = np.asarray(rollout.values + [rollout.r])
-
+	
+	# rewards_plus_v : signal of rewards plus V(s') in the end
     rewards_plus_v = np.asarray(rollout.rewards + [rollout.r])
+    # batch_r : calculate the discounted reward for each timestep. A signal of G_t
     batch_r = discount(rewards_plus_v, gamma)[:-1]
+    
     delta_t = rewards + gamma * vpred_t[1:] - vpred_t[:-1]
     # this formula for the advantage comes "Generalized Advantage Estimation":
     # https://arxiv.org/abs/1506.02438
@@ -285,8 +293,9 @@ class A3C(object):
         """process grabs a rollout that's been produced by the thread runner,
 		and updates the parameters. The update is then sent to the parameter
 		server."""
-
-        sess.run(self.sync)  # copy weights from shared to local
+		
+		# copy weights from parameter server to local
+        sess.run(self.sync)  
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=0.99, lambda_=1.0)
 
@@ -298,6 +307,7 @@ class A3C(object):
             fetches = [self.train_op, self.global_step]
 
         feed_dict = {
+        	# batch.si is a list of states in the rollout
             self.local_network.x: batch.si,
             self.ac: batch.a,
             self.adv: batch.adv,

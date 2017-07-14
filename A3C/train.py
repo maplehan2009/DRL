@@ -20,8 +20,7 @@ parser.add_argument('-m', '--mode', type=str, default='tmux',
                     help="tmux: run workers in a tmux session. nohup: run workers with nohup. child: run workers as child processes")
 
 # Add visualise tag
-parser.add_argument('--visualise', action='store_true',
-                    help="Visualise the gym environment by running env.render() between each timestep")
+parser.add_argument('--visualise', action='store_true', help="Visualise the gym environment by running env.render() between each timestep")
 
 
 def new_cmd(session, name, cmd, mode, logdir, shell):

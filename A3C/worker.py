@@ -23,7 +23,9 @@ class FastSaver(tf.train.Saver):
                                     meta_graph_suffix, False)
 
 def run(args, server):
+	# Create the game environment 
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes)
+    # Create a new agent : trainer
     trainer = A3C(env, args.task, args.visualise)
 
     # Variable names that start with "local" are not saved in checkpoints.
@@ -68,17 +70,20 @@ def run(args, server):
                              save_summaries_secs=30)
 
 	# Global steps !!!
-    num_global_steps = 100000
+    num_global_steps = 50000000
 
     logger.info(
         "Starting session. If this hangs, we're mostly likely waiting to connect to the parameter server. " +
         "One common cause is that the parameter server DNS name isn't resolving yet, or is misspecified.")
     with sv.managed_session(server.target, config=config) as sess, sess.as_default():
+    	# synchronize the params from parameter server
         sess.run(trainer.sync)
+        # agent / trainer begins to interact with the game environment
         trainer.start(sess, summary_writer)
         global_step = sess.run(trainer.global_step)
         logger.info("Starting training at step=%d", global_step)
         while not sv.should_stop() and (not num_global_steps or global_step < num_global_steps):
+        	# process the rollout information to update the parameters
             trainer.process(sess)
             global_step = sess.run(trainer.global_step)
 
@@ -87,9 +92,7 @@ def run(args, server):
     logger.info('reached %s steps. worker stopped.', global_step)
 
 def cluster_spec(num_workers, num_ps):
-    """
-More tensorflow setup for data parallelism
-"""
+    """More tensorflow setup for data parallelism"""
     cluster = {}
     port = 12222
 
