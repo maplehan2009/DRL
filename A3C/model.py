@@ -63,6 +63,7 @@ class LSTMPolicy(object):
     def __init__(self, ob_space, ac_space):
     	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
     	# x is the input images with dimension [batchsize, observation dimension]
+    	# Pyhton syntax : a = b = 1. a and b have no reference or relationship.
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
 
 		# 4 layers of CNN 
@@ -83,8 +84,9 @@ class LSTMPolicy(object):
         
         # state_size has two fields: c and h
         self.state_size = lstm.state_size
-        # step_size equals to the batch size
-        step_size = tf.shape(self.x)[1:2]
+        # step_size equals to the sequence size
+        # Note : self.x is different from x. They have different dimensions
+        step_size = tf.shape(self.x)[0:1]
 
         c_init = np.zeros((1, lstm.state_size.c), np.float32)
         h_init = np.zeros((1, lstm.state_size.h), np.float32)

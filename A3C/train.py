@@ -25,6 +25,7 @@ parser.add_argument('--visualise', action='store_true', help="Visualise the gym 
 
 def new_cmd(session, name, cmd, mode, logdir, shell):
     if isinstance(cmd, (list, tuple)):
+    	# " ".join(["a","b","c"]) returns "a b c"
         cmd = " ".join(shlex_quote(str(v)) for v in cmd)
     if mode == 'tmux':
         return name, "tmux send-keys -t {}:{} {} Enter".format(session, name, shlex_quote(cmd))
@@ -35,7 +36,8 @@ def new_cmd(session, name, cmd, mode, logdir, shell):
 
 
 def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash', mode='tmux', visualise=False):
-    # for launching the TF workers and for launching tensorboard
+    # for launching the tensorflow workers and for launching tensorboard
+    # sys.executable returns the path of the python library. So python
     base_cmd = [
         'CUDA_VISIBLE_DEVICES=',
         sys.executable, 'worker.py',
@@ -51,12 +53,14 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
     else:
         remotes = remotes.split(',')
         assert len(remotes) == num_workers
-
+        
+    # Create a new parameter server to registre the global network
     cmds_map = [new_cmd(session, "ps", base_cmd + ["--job-name", "ps"], mode, logdir, shell)]
+    # create the parallel workers
     for i in range(num_workers):
         cmds_map += [new_cmd(session,
             "w-%d" % i, base_cmd + ["--job-name", "worker", "--task", str(i), "--remotes", remotes[i]], mode, logdir, shell)]
-
+	# create the tensorboard
     cmds_map += [new_cmd(session, "tb", ["tensorboard", "--logdir", logdir, "--port", "12345"], mode, logdir, shell)]
     if mode == 'tmux':
         cmds_map += [new_cmd(session, "htop", ["htop"], mode, logdir, shell)]
@@ -96,6 +100,7 @@ def create_commands(session, num_workers, remotes, env_id, logdir, shell='bash',
 
 def run():
     args = parser.parse_args()
+    # cmds : command lines to execute. notes : information to print out
     cmds, notes = create_commands("a3c", args.num_workers, args.remotes, args.env_id, args.log_dir, mode=args.mode, visualise=args.visualise)
     if args.dry_run:
         print("Dry-run mode due to -n flag, otherwise the following commands would be executed:")
@@ -106,6 +111,7 @@ def run():
     if not args.dry_run:
         if args.mode == "tmux":
             os.environ["TMUX"] = ""
+        # EXECUTE the command (a string) in a subshell
         os.system("\n".join(cmds))
     print('\n'.join(notes))
 
