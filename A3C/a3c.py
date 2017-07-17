@@ -226,7 +226,7 @@ class A3C(object):
             
             # option loss
             #h_loss = tf.reduce_sum(tf.square(pi.h_in - pi.h_out))
-            h_loss = tf.square(tf.reduce_sum(tf.square(pi.h_in)) - tf.reduce_sum(tf.square(pi.h_out)))
+            #h_loss = tf.square(tf.reduce_sum(tf.square(pi.h_in)) - tf.reduce_sum(tf.square(pi.h_out)))
             
             # Total Loss function, may tune the lambda value here.
             self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
@@ -257,12 +257,16 @@ class A3C(object):
 			# clipping to avoid the exploding or vanishing gradient values
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
 
-            # copy weights from the parameter server to the local model by tf.assign
+            # copy weights from the parameter server to the local model by tf.assign : update the value of v1 by v2
             # self.network is the global network while pi is the local one
             # tf.group : An Operation that executes all its inputs.
+            # tf.assign is a shallow copy
             self.sync = tf.group(*[v1.assign(v2) for v1, v2 in zip(pi.var_list, self.network.var_list)])
             
             # list zip gives [(grad value, variable name), () ... ()]
+            # this is a key step to send the local gradient value to the parameter server. 
+            # grads is the locally computed gradient value and self.network is the global network in ps
+            # actually, we combine the gradient value with the variables of the global network 
             grads_and_vars = list(zip(grads, self.network.var_list))
             
             # inc_step maps to the ops that global step += some value

@@ -32,9 +32,9 @@ if __name__=='__main__':
 		data.append(this_Y)
 
 	plt.figure(figsize=(8, 8))
-	plt.plot(*data, linewidth=1.2)
-	#plt.xlim(0, 1e7)
-	#plt.ylim(0, 40)
+	plt.plot(*data, linewidth=1.1)
+	plt.xlim(0, 0.9e7)
+	plt.ylim(0, 40)
 	plt.xlabel('Step')
 	plt.ylabel('Episode Reward')
 	plt.title('Episode Reward v.s. Step')

@@ -23,20 +23,15 @@ class FastSaver(tf.train.Saver):
                                     meta_graph_suffix, False)
 
 def run(args, server):
-	# Create the game environment 
+	# Create the game environment
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes)
     # Create a new agent : trainer
     trainer = A3C(env, args.task, args.visualise)
 
     # Variable names that start with "local" are not saved in checkpoints.
-    if use_tf12_api:
-        variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
-        init_op = tf.variables_initializer(variables_to_save)
-        init_all_op = tf.global_variables_initializer()
-    else:
-        variables_to_save = [v for v in tf.all_variables() if not v.name.startswith("local")]
-        init_op = tf.initialize_variables(variables_to_save)
-        init_all_op = tf.initialize_all_variables()
+    variables_to_save = [v for v in tf.global_variables() if not v.name.startswith("local")]
+    init_op = tf.variables_initializer(variables_to_save)
+    init_all_op = tf.global_variables_initializer()
     saver = FastSaver(variables_to_save)
 
     var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
@@ -84,6 +79,8 @@ def run(args, server):
         logger.info("Starting training at step=%d", global_step)
         while not sv.should_stop() and (not num_global_steps or global_step < num_global_steps):
         	# process the rollout information to update the parameters
+        	# here there is a while loop. So it is the main learning phase.
+        	# because of the yield syntax in the env_runner, they perform 20 steps of experiments once trainer.process() is called.
             trainer.process(sess)
             global_step = sess.run(trainer.global_step)
 
@@ -111,9 +108,7 @@ def cluster_spec(num_workers, num_ps):
     return cluster
 
 def main(_):
-    """
-Setting up Tensorflow for data parallel work
-"""
+    """Setting up Tensorflow for data parallel work"""
 
     parser = argparse.ArgumentParser(description=None)
     parser.add_argument('-v', '--verbose', action='count', dest='verbosity', default=0, help='Set verbosity.')
@@ -134,6 +129,7 @@ Setting up Tensorflow for data parallel work
     args = parser.parse_args()
     spec = cluster_spec(args.num_workers, 1)
     cluster = tf.train.ClusterSpec(spec).as_cluster_def()
+    
 
     def shutdown(signal, frame):
         logger.warn('Received signal %s: exiting', signal)
@@ -143,6 +139,7 @@ Setting up Tensorflow for data parallel work
     signal.signal(signal.SIGTERM, shutdown)
 
     if args.job_name == "worker":
+    	# A server belongs to a cluster. The server can communicate with any other server in the same cluster
         server = tf.train.Server(cluster, job_name="worker", task_index=args.task,
                                  config=tf.ConfigProto(intra_op_parallelism_threads=1, inter_op_parallelism_threads=2))
         run(args, server)
