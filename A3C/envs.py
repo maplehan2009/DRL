@@ -16,7 +16,7 @@ universe.configure_logging()
 
 def create_env(env_id, client_id, remotes, **kwargs):
     spec = gym.spec(env_id)
-
+	# spec.tags is a python dict. get search for the key. If the key is not available in the dictionary, it will return False
     if spec.tags.get('flashgames', False):
         return create_flash_env(env_id, client_id, remotes, **kwargs)
     elif spec.tags.get('atari', False) and spec.tags.get('vnc', False):
@@ -71,6 +71,7 @@ def create_vncatari_env(env_id, client_id, remotes, **_):
     return env
 
 def create_atari_env(env_id):
+	# essential in my experiments
     env = gym.make(env_id)
     env = Vectorize(env)
     env = AtariRescale42x42(env)

@@ -14,7 +14,8 @@ if __name__ == '__main__':
 	folders = ['Data_Basic_A3C', 'Data_1level_A3C', 'Data_2level_A3C', 'Data_3level_A3C']
 	#game = 'pong'
 	#game = 'pacman'
-	game = 'breakout'
+	#game = 'breakout'
+	game = 'spaceinvader'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
 	selected_folders = [0, 1, 2]
 	N_workers = 4

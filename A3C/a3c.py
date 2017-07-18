@@ -58,8 +58,8 @@ class PartialRollout(object):
         self.terminal = False
         self.features = []
 
-    def add(self, state, action, reward, value, terminal, features):
-        self.states += [state]
+    def add(self, state, action, reward, value, terminal, features): 		
+    	self.states += [state]
         self.actions += [action]
         self.rewards += [reward]
         self.values += [value]
@@ -119,8 +119,11 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
     """The logic of the thread runner.  In brief, it constantly keeps on running
 	the policy, and as long as the rollout exceeds a certain length, the thread
 	runner appends the policy to the queue."""
-	# restart the game, last_state is the first frame of pixels
+	# restart the game, last_state is the first frame of pixels with shape [42, 42, 1]
     last_state = env.reset()
+    x = last_state[:,:,0]
+    last_state = np.stack((x, x, x, x), axis = 2)
+    
     # a vector whose every element is zero
     last_features = policy.get_initial_features()
     length = 0
@@ -140,7 +143,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
             state, reward, terminal, info = env.step(action.argmax())
             if render:
                 env.render()
-
+			state = np.append(last_state[:,:,1:], state, axis = 2)
             # collect the experience
             rollout.add(last_state, action, reward, value_, terminal, last_features)
             length += 1
@@ -161,6 +164,8 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
                 terminal_end = True
                 if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
                     last_state = env.reset()
+                    x = last_state[:,:,0]
+   					last_state = np.stack((x, x, x, x), axis = 2)
                 # After each episode, the author resets the c and h to zeros
                 # I may keep the value of c since c has the meaning of memory. And set h to zero since h has the meaning of option.
                 #last_features = policy.get_initial_features()
@@ -192,14 +197,15 @@ class A3C(object):
         worker_device = "/job:worker/task:{}/cpu:0".format(task)
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
-                self.network = LSTMPolicy(env.observation_space.shape, env.action_space.n)
+            	# env.observation_space.shape is (42, 42, 1) by default
+                self.network = LSTMPolicy(env.observation_space.shape[:-1] + [4], env.action_space.n)
                 self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
                                                    trainable=False)
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
             	# pi is a local network instead of the policy function
-                self.local_network = pi = LSTMPolicy(env.observation_space.shape, env.action_space.n)
+                self.local_network = pi = LSTMPolicy(env.observation_space.shape[:-1] + [4], env.action_space.n)
                 pi.global_step = self.global_step
                
 			# ac : action vector
