@@ -58,13 +58,13 @@ class PartialRollout(object):
         self.terminal = False
         self.features = []
 
-    def add(self, state, action, reward, value, terminal, features): 		
+    def add(self, state, action, reward, value, terminal, features):
     	self.states += [state]
-        self.actions += [action]
-        self.rewards += [reward]
-        self.values += [value]
-        self.terminal = terminal
-        self.features += [features]
+    	self.actions += [action]
+    	self.rewards += [reward]
+    	self.values += [value]
+    	self.terminal = terminal
+    	self.features += [features]
 
     def extend(self, other):
         assert not self.terminal
@@ -143,7 +143,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
             state, reward, terminal, info = env.step(action.argmax())
             if render:
                 env.render()
-			state = np.append(last_state[:,:,1:], state, axis = 2)
+            state = np.append(last_state[:,:,1:], state, axis = 2)
             # collect the experience
             rollout.add(last_state, action, reward, value_, terminal, last_features)
             length += 1
@@ -165,7 +165,7 @@ def env_runner(env, policy, num_local_steps, summary_writer, render):
                 if length >= timestep_limit or not env.metadata.get('semantics.autoreset'):
                     last_state = env.reset()
                     x = last_state[:,:,0]
-   					last_state = np.stack((x, x, x, x), axis = 2)
+                    last_state = np.stack((x, x, x, x), axis = 2)
                 # After each episode, the author resets the c and h to zeros
                 # I may keep the value of c since c has the meaning of memory. And set h to zero since h has the meaning of option.
                 #last_features = policy.get_initial_features()
@@ -198,14 +198,14 @@ class A3C(object):
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
             	# env.observation_space.shape is (42, 42, 1) by default
-                self.network = LSTMPolicy(env.observation_space.shape[:-1] + [4], env.action_space.n)
+                self.network = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
                 self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
                                                    trainable=False)
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
             	# pi is a local network instead of the policy function
-                self.local_network = pi = LSTMPolicy(env.observation_space.shape[:-1] + [4], env.action_space.n)
+                self.local_network = pi = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
                 pi.global_step = self.global_step
                
 			# ac : action vector
