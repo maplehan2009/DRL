@@ -129,7 +129,7 @@ class LSTMPolicy(object):
 class LSTMPolicy_beta(object):
     def __init__(self, ob_space, ac_space):
     	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
-    	# x is the input images with dimension [sequence size, observation dimension]. Typically [20, 42, 42, 1]
+    	# x is the input images with dimension [sequence size, observation dimension]. Typically [20, 42, 42, 1] or [20, 42, 42, 4]
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
 
 		# 4 layers of CNN 
@@ -144,10 +144,8 @@ class LSTMPolicy_beta(object):
 		
 		# size of h, the hidden state vector
         size = 256
-        if use_tf100_api:
-            lstm = rnn.BasicLSTMCell(size, state_is_tuple=True)
-        else:
-            lstm = rnn.rnn_cell.BasicLSTMCell(size, state_is_tuple=True)
+        stack_lstm = rnn.MultiRNNCell([rnn.BasicLSTMCell(size) for _ in range(3)])
+
         
         # state_size has two fields: c and h. In fact state_size.c = state_size.h = size
         self.state_size = lstm.state_size

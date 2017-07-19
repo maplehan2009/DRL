@@ -18,10 +18,10 @@ if __name__=='__main__':
 	folders = ['Data_Basic_A3C', 'Data_1level_A3C', 'Data_2level_A3C', 'Data_3level_A3C']
 	#game = 'pong'
 	#game = 'pacman'
-	#game = 'breakout'
-	game = 'spaceinvader'
+	game = 'breakout'
+	#game = 'spaceinvader'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [0, 1, 2]
+	selected_folders = [0, 1]
 	N_folders = len(selected_folders)
 	data = []
 	for i in selected_folders:

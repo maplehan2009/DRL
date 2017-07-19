@@ -74,7 +74,8 @@ def create_atari_env(env_id):
 	# essential in my experiments
     env = gym.make(env_id)
     env = Vectorize(env)
-    env = AtariRescale42x42(env)
+    #env = AtariRescale42x42(env)
+    env = AtariRescale84x84(env)
     env = DiagnosticsInfo(env)
     env = Unvectorize(env)
     return env
@@ -186,6 +187,26 @@ class AtariRescale42x42(vectorized.ObservationWrapper):
 
     def _observation(self, observation_n):
         return [_process_frame42(observation) for observation in observation_n]
+
+def _process_frame84(frame):
+    frame = frame[34:34+160, :160]
+    # Resize by half, then down to 42x42 (essentially mipmapping). If
+    # we resize directly we lose pixels that, when mapped to 42x42,
+    # aren't close enough to the pixel boundary.
+    frame = cv2.resize(frame, (84, 84))
+    frame = frame.mean(2)
+    frame = frame.astype(np.float32)
+    frame *= (1.0 / 255.0)
+    frame = np.reshape(frame, [84, 84, 1])
+    return frame
+
+class AtariRescale84x84(vectorized.ObservationWrapper):
+    def __init__(self, env=None):
+        super(AtariRescale84x84, self).__init__(env)
+        self.observation_space = Box(0.0, 1.0, [84, 84, 1])
+
+    def _observation(self, observation_n):
+        return [_process_frame84(observation) for observation in observation_n]
 
 class FixedKeyState(object):
     def __init__(self, keys):
