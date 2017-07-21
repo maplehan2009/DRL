@@ -144,30 +144,49 @@ class LSTMPolicy_beta(object):
 		
 		# size of h, the hidden state vector
         size = 256
-        stack_lstm = rnn.MultiRNNCell([rnn.BasicLSTMCell(size) for _ in range(3)])
-
         
+        def lstm_cell():
+			return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
+        
+        stacked_lstm = rnn.MultiRNNCell([lstm_cell() for _ in range(3)], state_is_tuple=True)
+        state_size = stacked_lstm.state_size
         # state_size has two fields: c and h. In fact state_size.c = state_size.h = size
-        self.state_size = lstm.state_size
+        self.state_size = state_size
         # step_size equals to the batch size
-        step_size = tf.shape(self.x)[1:2]
-
-        c_init = np.zeros((1, lstm.state_size.c), np.float32)
-        h_init = np.zeros((1, lstm.state_size.h), np.float32)
-        self.state_init = [c_init, h_init]
-        c_in = tf.placeholder(tf.float32, [1, lstm.state_size.c])
-        h_in = tf.placeholder(tf.float32, [1, lstm.state_size.h])
-        self.state_in = [c_in, h_in]
-
-        if use_tf100_api:
-            state_in = rnn.LSTMStateTuple(c_in, h_in)
-        else:
-            state_in = rnn.rnn_cell.LSTMStateTuple(c_in, h_in)
+        step_size = tf.shape(self.x)[0]
         
-        lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
+        c0_init = np.zeros((1, state_size[0].c), np.float32)
+		h0_init = np.zeros((1, state_size[0].h), np.float32)
+		c1_init = np.zeros((1, state_size[1].c), np.float32)
+		h1_init = np.zeros((1, state_size[1].h), np.float32)
+		c2_init = np.zeros((1, state_size[2].c), np.float32)
+		h2_init = np.zeros((1, state_size[2].h), np.float32)
+		
+        self.state_init = [c0_init, h0_init, c1_init, h1_init, c2_init, h2_init]
+        
+		c0 = tf.placeholder(tf.float32, [1, state_size[0].c])
+		h0 = tf.placeholder(tf.float32, [1, state_size[0].h])
+		c1 = tf.placeholder(tf.float32, [1, state_size[1].c])
+		h1 = tf.placeholder(tf.float32, [1, state_size[1].h])
+		c2 = tf.placeholder(tf.float32, [1, state_size[2].c])
+		h2 = tf.placeholder(tf.float32, [1, state_size[2].h])
+        self.state_in = [c0, h0, c1, h1, c2, h2]
+
+        state_in = (rnn.LSTMStateTuple(c0, h0), rnn.LSTMStateTuple(c1, h1), rnn.LSTMStateTuple(c2, h2))
+        State = [None] * (step_size+1)
+		Output = [None] * step_size
+		State[0] = state_in
+		
+		with tf.variable_scope("my_RNN"):
+			for i in range(step_size):
+				if i > 0 : tf.get_variable_scope().reuse_variables()
+				(Output[i], State[i+1]) = stacked_lstm(x[:, i, :], State[i])
+				
+        #lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
         # the dim of lstm_c and lstm_h ?
-        lstm_c, lstm_h = lstm_state
-        x = tf.reshape(lstm_outputs, [-1, size])
+        #lstm_c, lstm_h = lstm_state
+        x = tf.reshape(tf.stack(axis=1, values=Output), [-1, size])
+
         # logits is pi(a | s)
         self.logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01))
         # vf is V(s)

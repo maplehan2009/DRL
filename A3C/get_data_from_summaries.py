@@ -17,7 +17,7 @@ if __name__ == '__main__':
 	game = 'breakout'
 	#game = 'spaceinvader'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [0, 1]
+	selected_folders = [0, 1,2,3]
 	N_workers = 4
 	df = []
 		
