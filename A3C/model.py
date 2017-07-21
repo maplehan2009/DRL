@@ -128,21 +128,10 @@ class LSTMPolicy(object):
 ############################################################################################
 class LSTMPolicy_beta(object):
     def __init__(self, ob_space, ac_space):
-    	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
-    	# x is the input images with dimension [sequence size, observation dimension]. Typically [20, 42, 42, 1] or [20, 42, 42, 4]
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
-
-		# 4 layers of CNN 
-		# tf.nn.elu means Exponential Linear Units. Like Sigmoid and RELU, it is a kind of activation function
         for i in range(4):
             x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
-            
-        # tf.expand_dims inserts a dimension of 1 into a tensor's shape
-        # introduce a "fake" batch dimension of 1 after flatten
-        # so that shape of x becomes [batchsize=1, sequence size = None, input size = pixel number]
         x = tf.expand_dims(flatten(x), [0])
-		
-		# size of h, the hidden state vector
         size = 256
         
         def lstm_cell():
@@ -150,9 +139,7 @@ class LSTMPolicy_beta(object):
         
         stacked_lstm = rnn.MultiRNNCell([lstm_cell() for _ in range(3)], state_is_tuple=True)
         state_size = stacked_lstm.state_size
-        # state_size has two fields: c and h. In fact state_size.c = state_size.h = size
         self.state_size = state_size
-        # step_size equals to the batch size
         step_size = tf.shape(self.x)[0]
         
         c0_init = np.zeros((1, state_size[0].c), np.float32)
@@ -161,19 +148,18 @@ class LSTMPolicy_beta(object):
 		h1_init = np.zeros((1, state_size[1].h), np.float32)
 		c2_init = np.zeros((1, state_size[2].c), np.float32)
 		h2_init = np.zeros((1, state_size[2].h), np.float32)
-		
-        self.state_init = [c0_init, h0_init, c1_init, h1_init, c2_init, h2_init]
-        
+		self.state_init = [[c0_init, h0_init], [c1_init, h1_init], [c2_init, h2_init]]
+
 		c0 = tf.placeholder(tf.float32, [1, state_size[0].c])
 		h0 = tf.placeholder(tf.float32, [1, state_size[0].h])
 		c1 = tf.placeholder(tf.float32, [1, state_size[1].c])
 		h1 = tf.placeholder(tf.float32, [1, state_size[1].h])
 		c2 = tf.placeholder(tf.float32, [1, state_size[2].c])
 		h2 = tf.placeholder(tf.float32, [1, state_size[2].h])
-        self.state_in = [c0, h0, c1, h1, c2, h2]
+        self.state_in = [[c0, h0], [c1, h1], [c2, h2]]
 
         state_in = (rnn.LSTMStateTuple(c0, h0), rnn.LSTMStateTuple(c1, h1), rnn.LSTMStateTuple(c2, h2))
-        State = [None] * (step_size+1)
+        State = [None] * (step_size + 1)
 		Output = [None] * step_size
 		State[0] = state_in
 		
@@ -181,30 +167,33 @@ class LSTMPolicy_beta(object):
 			for i in range(step_size):
 				if i > 0 : tf.get_variable_scope().reuse_variables()
 				(Output[i], State[i+1]) = stacked_lstm(x[:, i, :], State[i])
-				
-        #lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
-        # the dim of lstm_c and lstm_h ?
-        #lstm_c, lstm_h = lstm_state
+
+        self.lstm_c = tf.reshape(tf.stack(values = [State[-1][0].c, State[-1][1].c, State[-1][2].c], axis = 0), (-1, size))      
+        lstm_h = [None] * (step_size + 1)
+		for i in range(len(State)):
+			lstm_h[i] = tf.reshape(tf.stack(values = [State[i][0].h, State[i][1].h, State[i][2].h], axis = 0), (-1, size))
+		self.lstm_h = tf.stack(values=lstm_h, axis=1)
+		
         x = tf.reshape(tf.stack(axis=1, values=Output), [-1, size])
 
-        # logits is pi(a | s)
         self.logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01))
-        # vf is V(s)
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])
-        
-        self.state_out = [lstm_c[:1, :], lstm_h[:1, :]]
+        self.state_out = [self.lstm_c, self.lstm_h[:, -1, :]]
         self.sample = categorical_sample(self.logits, ac_space)[0, :]
-        # list of the input variables, used in the gradient calculation of the loss function
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
     def get_initial_features(self):
         return self.state_init
 
-    def act(self, ob, c, h):
+    def act(self, x, c, h):
         sess = tf.get_default_session()
         return sess.run([self.sample, self.vf] + self.state_out,
-                        {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})
+                        {self.x: [x], self.state_in[0][0]: c[0], self.state_in[0][1]: h[0], 
+                        self.state_in[1][0]: c[1], self.state_in[1][1]: h[1], 
+                        self.state_in[2][0]: c[2], self.state_in[2][1]: h[2]})
 
-    def value(self, ob, c, h):
+    def value(self, x, c, h):
         sess = tf.get_default_session()
-        return sess.run(self.vf, {self.x: [ob], self.state_in[0]: c, self.state_in[1]: h})[0]
+        return sess.run(self.vf, {self.x: [x], self.state_in[0][0]: c[0], self.state_in[0][1]: h[0], 
+                        self.state_in[1][0]: c[1], self.state_in[1][1]: h[1], 
+                        self.state_in[2][0]: c[2], self.state_in[2][1]: h[2]})[0]
