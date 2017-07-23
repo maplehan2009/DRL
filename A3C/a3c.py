@@ -2,13 +2,15 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
-from model import LSTMPolicy
+from model import LSTMPolicy, LSTMPolicy_beta
 import six.moves.queue as queue
 import scipy.signal
 import threading
 import distutils.version
 use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
+
+BETA = True
 
 ############################################################################################
 def discount(x, gamma):
@@ -198,15 +200,21 @@ class A3C(object):
         with tf.device(tf.train.replica_device_setter(1, worker_device=worker_device)):
             with tf.variable_scope("global"):
             	# env.observation_space.shape is (42, 42, 1) by default
-                self.network = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
-                self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
+            	if BETA:
+            		self.network = LSTMPolicy_beta(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            	else:
+            		self.network = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            	self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
                                                    trainable=False)
 
         with tf.device(worker_device):
             with tf.variable_scope("local"):
             	# pi is a local network instead of the policy function
-                self.local_network = pi = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
-                pi.global_step = self.global_step
+            	if BETA:
+            		self.local_network = pi = LSTMPolicy_beta(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            	else:
+            		self.local_network = pi = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            	pi.global_step = self.global_step
                
 			# ac : action vector
             self.ac = tf.placeholder(tf.float32, [None, env.action_space.n], name="ac")
@@ -235,7 +243,7 @@ class A3C(object):
             #h_loss = tf.square(tf.reduce_sum(tf.square(pi.h_in)) - tf.reduce_sum(tf.square(pi.h_out)))
             
             # Total Loss function, may tune the lambda value here.
-            self.loss = pi_loss + 0.5 * vf_loss - entropy * 0.01
+            self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy
 
             # 20 represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
@@ -315,21 +323,30 @@ class A3C(object):
             fetches = [self.summary_op, self.train_op, self.global_step]
         else:
             fetches = [self.train_op, self.global_step]
-
-        feed_dict = {
-        	# batch.si is a list of states in the rollout
-            self.local_network.x: batch.si,
-            self.ac: batch.a,
-            self.adv: batch.adv,
-            self.r: batch.r,
-            self.local_network.state_in[0]: batch.features[0],
-            self.local_network.state_in[1]: batch.features[1],
-        }
-
+            
+        if BETA:
+        	feed_dict = {
+    		self.local_network.x: batch.si,
+	        self.ac: batch.a,
+	        self.adv: batch.adv,
+	        self.r: batch.r,
+	        self.local_network.state_in[0][0]: batch.features[0][0:1],
+	        self.local_network.state_in[0][1]: batch.features[0][1:2],
+	        self.local_network.state_in[0][2]: batch.features[0][2:3],
+	        self.local_network.state_in[1][0]: batch.features[1][0:1],
+	        self.local_network.state_in[1][1]: batch.features[1][1:2],
+	        self.local_network.state_in[1][2]: batch.features[1][2:3]}
+        else:
+        	feed_dict = {
+        	self.local_network.x: batch.si,
+        	self.ac: batch.a,
+        	self.adv: batch.adv,
+        	self.r: batch.r,
+        	self.local_network.state_in[0]: batch.features[0],
+        	self.local_network.state_in[1]: batch.features[1]}
         fetched = sess.run(fetches, feed_dict=feed_dict)
-
         if should_compute_summary:
-            self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
-            self.summary_writer.flush()
+        	self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
+        	self.summary_writer.flush()
         self.local_steps += 1
         

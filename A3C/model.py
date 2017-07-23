@@ -90,7 +90,6 @@ class LSTMPolicy(object):
         self.state_init = [c_init, h_init]
         c_in = tf.placeholder(tf.float32, [1, lstm.state_size.c])
         h_in = tf.placeholder(tf.float32, [1, lstm.state_size.h])
-        self.h_in = h_in
         self.state_in = [c_in, h_in]
 
         if use_tf100_api:
@@ -101,7 +100,7 @@ class LSTMPolicy(object):
         lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
         # the dim of lstm_c and lstm_h ?
         lstm_c, lstm_h = lstm_state
-        self.h_out = lstm_h
+
         x = tf.reshape(lstm_outputs, [-1, size])
         # logits is pi(a | s)
         self.logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01))
@@ -133,52 +132,41 @@ class LSTMPolicy_beta(object):
             x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
         x = tf.expand_dims(flatten(x), [0])
         size = 256
-        
         def lstm_cell():
-			return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
+            return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
         
         stacked_lstm = rnn.MultiRNNCell([lstm_cell() for _ in range(3)], state_is_tuple=True)
         state_size = stacked_lstm.state_size
         self.state_size = state_size
-        step_size = tf.shape(self.x)[0]
-        
-        c0_init = np.zeros((1, state_size[0].c), np.float32)
-		h0_init = np.zeros((1, state_size[0].h), np.float32)
-		c1_init = np.zeros((1, state_size[1].c), np.float32)
-		h1_init = np.zeros((1, state_size[1].h), np.float32)
-		c2_init = np.zeros((1, state_size[2].c), np.float32)
-		h2_init = np.zeros((1, state_size[2].h), np.float32)
-		self.state_init = [[c0_init, h0_init], [c1_init, h1_init], [c2_init, h2_init]]
+        step_size = tf.shape(self.x)[0:1]
 
-		c0 = tf.placeholder(tf.float32, [1, state_size[0].c])
-		h0 = tf.placeholder(tf.float32, [1, state_size[0].h])
-		c1 = tf.placeholder(tf.float32, [1, state_size[1].c])
-		h1 = tf.placeholder(tf.float32, [1, state_size[1].h])
-		c2 = tf.placeholder(tf.float32, [1, state_size[2].c])
-		h2 = tf.placeholder(tf.float32, [1, state_size[2].h])
-        self.state_in = [[c0, h0], [c1, h1], [c2, h2]]
+        c0_init = np.zeros((1, state_size[0].c), np.float32)
+        h0_init = np.zeros((1, state_size[0].h), np.float32)
+        c1_init = np.zeros((1, state_size[1].c), np.float32)
+        h1_init = np.zeros((1, state_size[1].h), np.float32)
+        c2_init = np.zeros((1, state_size[2].c), np.float32)
+        h2_init = np.zeros((1, state_size[2].h), np.float32)
+        self.state_init = [np.reshape(np.stack([c0_init, c1_init, c2_init], axis = 0), (-1, size)),
+                           np.reshape(np.stack([h0_init, h1_init, h2_init], axis = 0), (-1, size))]
+
+        c0 = tf.placeholder(tf.float32, [1, state_size[0].c])
+        h0 = tf.placeholder(tf.float32, [1, state_size[0].h])
+        c1 = tf.placeholder(tf.float32, [1, state_size[1].c])
+        h1 = tf.placeholder(tf.float32, [1, state_size[1].h])
+        c2 = tf.placeholder(tf.float32, [1, state_size[2].c])
+        h2 = tf.placeholder(tf.float32, [1, state_size[2].h])
+        self.state_in = [[c0, c1, c2], [h0, h1, h2]]
 
         state_in = (rnn.LSTMStateTuple(c0, h0), rnn.LSTMStateTuple(c1, h1), rnn.LSTMStateTuple(c2, h2))
-        State = [None] * (step_size + 1)
-		Output = [None] * step_size
-		State[0] = state_in
-		
-		with tf.variable_scope("my_RNN"):
-			for i in range(step_size):
-				if i > 0 : tf.get_variable_scope().reuse_variables()
-				(Output[i], State[i+1]) = stacked_lstm(x[:, i, :], State[i])
+        lstm_outputs, lstm_state = tf.nn.dynamic_rnn(stacked_lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
 
-        self.lstm_c = tf.reshape(tf.stack(values = [State[-1][0].c, State[-1][1].c, State[-1][2].c], axis = 0), (-1, size))      
-        lstm_h = [None] * (step_size + 1)
-		for i in range(len(State)):
-			lstm_h[i] = tf.reshape(tf.stack(values = [State[i][0].h, State[i][1].h, State[i][2].h], axis = 0), (-1, size))
-		self.lstm_h = tf.stack(values=lstm_h, axis=1)
-		
-        x = tf.reshape(tf.stack(axis=1, values=Output), [-1, size])
+        self.lstm_c = tf.reshape(tf.stack(values = [lstm_state[0].c, lstm_state[1].c, lstm_state[2].c], axis = 0), (-1, size))      
+        self.lstm_h = tf.reshape(tf.stack(values = [lstm_state[0].h, lstm_state[1].h, lstm_state[2].h], axis = 0), (-1, size))      
+        x = tf.reshape(lstm_outputs, [-1, size])
 
         self.logits = linear(x, ac_space, "action", normalized_columns_initializer(0.01))
         self.vf = tf.reshape(linear(x, 1, "value", normalized_columns_initializer(1.0)), [-1])
-        self.state_out = [self.lstm_c, self.lstm_h[:, -1, :]]
+        self.state_out = [self.lstm_c, self.lstm_h]
         self.sample = categorical_sample(self.logits, ac_space)[0, :]
         self.var_list = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, tf.get_variable_scope().name)
 
@@ -188,12 +176,12 @@ class LSTMPolicy_beta(object):
     def act(self, x, c, h):
         sess = tf.get_default_session()
         return sess.run([self.sample, self.vf] + self.state_out,
-                        {self.x: [x], self.state_in[0][0]: c[0], self.state_in[0][1]: h[0], 
-                        self.state_in[1][0]: c[1], self.state_in[1][1]: h[1], 
-                        self.state_in[2][0]: c[2], self.state_in[2][1]: h[2]})
+                        {self.x: [x], self.state_in[0][0]: c[0:1], self.state_in[0][1]: c[1:2], 
+                        self.state_in[0][2]: c[2:3], self.state_in[1][0]: h[0:1], 
+                        self.state_in[1][1]: h[1:2], self.state_in[1][2]: h[2:3]})
 
     def value(self, x, c, h):
         sess = tf.get_default_session()
-        return sess.run(self.vf, {self.x: [x], self.state_in[0][0]: c[0], self.state_in[0][1]: h[0], 
-                        self.state_in[1][0]: c[1], self.state_in[1][1]: h[1], 
-                        self.state_in[2][0]: c[2], self.state_in[2][1]: h[2]})[0]
+        return sess.run(self.vf, {self.x: [x], self.state_in[0][0]: c[0:1], self.state_in[0][1]: c[1:2], 
+                        self.state_in[0][2]: c[2:3], self.state_in[1][0]: h[0:1], 
+                        self.state_in[1][1]: h[1:2], self.state_in[1][2]: h[2:3]})[0]
