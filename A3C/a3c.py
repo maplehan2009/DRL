@@ -240,10 +240,12 @@ class A3C(object):
             
             # option loss
             #h_loss = tf.reduce_sum(tf.square(pi.h_in - pi.h_out))
-            #h_loss = tf.square(tf.reduce_sum(tf.square(pi.h_in)) - tf.reduce_sum(tf.square(pi.h_out)))
-            
+            h_loss_0 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][0])) - tf.reduce_sum(tf.square(pi.state_out[1][0:1])))
+            h_loss_1 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][1])) - tf.reduce_sum(tf.square(pi.state_out[1][1:2])))
+            h_loss_2 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][2])) - tf.reduce_sum(tf.square(pi.state_out[1][2:3])))
+            H_loss = 0.001 * h_loss_0 + 0.01 * h_loss_1 + 0.1 * h_loss_2
             # Total Loss function, may tune the lambda value here.
-            self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy
+            self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy + H_loss
 
             # 20 represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
