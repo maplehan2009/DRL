@@ -255,7 +255,8 @@ class A3C(object):
             # smaller than 20 makes the algorithm more difficult to tune and to get to work.
             
             # RunnerThread is a class. See definition above.
-            self.runner = RunnerThread(env, pi, 20, visualise)
+            rollout_size = 20
+            self.runner = RunnerThread(env, pi, rollout_size, visualise)
 
 			# Constructs symbolic partial derivatives of self.loss w.r.t. variable in pi.var_list
             grads = tf.gradients(self.loss, pi.var_list)

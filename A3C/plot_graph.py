@@ -15,13 +15,13 @@ def moving_average(x):
 	return np.array(x_new)	
 
 if __name__=='__main__':
-	folders = ['Data_Basic_A3C', 'Data_1level_A3C', 'Data_2level_A3C', 'Data_3level_A3C']
+	folders = ['Data_1level_A3C', 'Data_3level_A3C', 'Data_3level_energy_A3C']
 	#game = 'pong'
 	#game = 'pacman'
 	game = 'breakout'
 	#game = 'spaceinvader'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [1, 3]
+	selected_folders = [0, 1, 2]
 	N_folders = len(selected_folders)
 	data = []
 	for i in selected_folders:
@@ -34,8 +34,8 @@ if __name__=='__main__':
 
 	plt.figure(figsize=(8, 8))
 	plt.plot(*data, linewidth=1.1)
-	#plt.xlim(0, 0.9e7)
-	#plt.ylim(0, 40)
+	plt.xlim(0, 0.5e7)
+	plt.ylim(0, 30)
 	plt.xlabel('Step')
 	plt.ylabel('Episode Reward')
 	plt.title('Episode Reward v.s. Step of the game ' + game )
