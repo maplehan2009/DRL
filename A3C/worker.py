@@ -23,6 +23,7 @@ class FastSaver(tf.train.Saver):
                                     meta_graph_suffix, False)
 
 def run(args, server):
+    # run for the workers
 	# Create the game environment
     env = create_env(args.env_id, client_id=str(args.task), remotes=args.remotes)
     # Create a new agent : trainer
@@ -65,7 +66,7 @@ def run(args, server):
                              save_summaries_secs=30)
 
 	# Global steps !!!
-    num_global_steps = 50000000
+    num_global_steps = 30000000
 
     logger.info(
         "Starting session. If this hangs, we're mostly likely waiting to connect to the parameter server. " +
@@ -132,6 +133,7 @@ def main(_):
     
 
     def shutdown(signal, frame):
+        # logger writes info into the file log universe in /tmp/
         logger.warn('Received signal %s: exiting', signal)
         sys.exit(128+signal)
     signal.signal(signal.SIGHUP, shutdown)

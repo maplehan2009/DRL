@@ -1,4 +1,5 @@
 import cv2
+import os
 from gym.spaces.box import Box
 import numpy as np
 import gym
@@ -12,7 +13,7 @@ from universe.spaces.vnc_event import keycode
 import time
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-universe.configure_logging()
+universe.configure_logging(path = os.path.dirname(os.path.abspath(__file__)) + '/universe-{}.log'.format(os.getpid()))
 
 def create_env(env_id, client_id, remotes, **kwargs):
     spec = gym.spec(env_id)

@@ -265,10 +265,10 @@ class A3C(object):
             	# summary is about the tensorboard. It exports the information about the model
                 tf.summary.scalar("model/policy_loss", pi_loss / bs)
                 tf.summary.scalar("model/value_loss", vf_loss / bs)
-                tf.summary.scalar("model/entropy", entropy / bs)
-                tf.summary.image("model/state", pi.x)
-                tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
-                tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
+                #tf.summary.scalar("model/entropy", entropy / bs)
+                #tf.summary.image("model/state", pi.x)
+                #tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
+                #tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
                 self.summary_op = tf.summary.merge_all()
 			
 			# clipping to avoid the exploding or vanishing gradient values
