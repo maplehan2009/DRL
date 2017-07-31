@@ -66,7 +66,7 @@ def run(args, server):
                              save_summaries_secs=30)
 
 	# Global steps !!!
-    num_global_steps = 30000000
+    num_global_steps = 100000000
 
     logger.info(
         "Starting session. If this hangs, we're mostly likely waiting to connect to the parameter server. " +

@@ -13,7 +13,7 @@ from universe.spaces.vnc_event import keycode
 import time
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
-universe.configure_logging(path = '/vol/bitbucket/logfiles/universe-{}.log'.format(os.getpid()))
+universe.configure_logging(path = '/vol/bitbucket/jh1016/logfiles/universe-{}.log'.format(os.getpid()))
 
 def create_env(env_id, client_id, remotes, **kwargs):
     spec = gym.spec(env_id)
