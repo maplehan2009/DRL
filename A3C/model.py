@@ -57,6 +57,8 @@ def categorical_sample(logits, d):
     value = tf.squeeze(tf.multinomial(logits - tf.reduce_max(logits, [1], keep_dims=True), 1), [1])
     return tf.one_hot(value, d)
 
+def argmax_sample(logits, d):
+    return tf.one_hot(np.argmax(logits), d)
 
 ############################################################################################
 class LSTMPolicy(object):
