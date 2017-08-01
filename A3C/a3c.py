@@ -201,7 +201,7 @@ class A3C(object):
             with tf.variable_scope("global"):
             	# env.observation_space.shape is (42, 42, 1) by default
             	if BETA:
-            		self.network = LSTMPolicy_beta(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            		self.network = LSTMPolicy_beta2(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	else:
             		self.network = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
@@ -211,7 +211,7 @@ class A3C(object):
             with tf.variable_scope("local"):
             	# pi is a local network instead of the policy function
             	if BETA:
-            		self.local_network = pi = LSTMPolicy_beta(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            		self.local_network = pi = LSTMPolicy_beta2(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	else:
             		self.local_network = pi = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	pi.global_step = self.global_step

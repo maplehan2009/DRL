@@ -16,9 +16,9 @@ def moving_average(x):
 
 if __name__=='__main__':
 	folders = ['Data_1level_A3C', 'Data_3level_A3C', 'Data_3level_energy_A3C', 'max_energy']
-	#game = 'pong'
+	game = 'pong'
 	#game = 'pacman'
-	game = 'breakout'
+	#game = 'breakout'
 	#game = 'spaceinvader'
 	#game = 'qbert'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
