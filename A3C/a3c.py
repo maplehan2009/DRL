@@ -2,14 +2,14 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
-from model import LSTMPolicy, LSTMPolicy_beta
+from model import LSTMPolicy, LSTMPolicy_beta, LSTMPolicy_beta2
 import six.moves.queue as queue
 import scipy.signal
 import threading
-import distutils.version
-use_tf12_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('0.12.0')
 Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
 
+# BETA True : use the three layers of LSTM with energy regularization
+# BETA False : use the simple one layer of LSTM without energy regularization
 BETA = True
 
 ############################################################################################
@@ -239,13 +239,16 @@ class A3C(object):
             bs = tf.to_float(tf.shape(pi.x)[0])
             
             # option loss
-            #h_loss = tf.reduce_sum(tf.square(pi.h_in - pi.h_out))
-            h_loss_0 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][0])) - tf.reduce_sum(tf.square(pi.state_out[1][0:1])))
-            h_loss_1 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][1])) - tf.reduce_sum(tf.square(pi.state_out[1][1:2])))
-            h_loss_2 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][2])) - tf.reduce_sum(tf.square(pi.state_out[1][2:3])))
-            H_loss = 0.001 * h_loss_0 + 0.01 * h_loss_1 + 0.1 * h_loss_2
-            # Total Loss function, may tune the lambda value here.
-            self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy + H_loss
+            if BETA:
+                #h_loss = tf.reduce_sum(tf.square(pi.h_in - pi.h_out))
+                h_loss_0 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][0])) - tf.reduce_sum(tf.square(pi.state_out[1][0:1])))
+                h_loss_1 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][1])) - tf.reduce_sum(tf.square(pi.state_out[1][1:2])))
+                h_loss_2 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][2])) - tf.reduce_sum(tf.square(pi.state_out[1][2:3])))
+                H_loss = 0.001 * h_loss_0 + 0.01 * h_loss_1 + 0.1 * h_loss_2
+                # Total Loss function, may tune the lambda value here.
+                self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy + H_loss
+            else:
+                self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy
 
             # 20 represents the number of "local steps":  the number of timesteps
             # we run the policy before we update the parameters.
@@ -261,7 +264,7 @@ class A3C(object):
 			# Constructs symbolic partial derivatives of self.loss w.r.t. variable in pi.var_list
             grads = tf.gradients(self.loss, pi.var_list)
 
-            if use_tf12_api:
+            if BETA:
             	# summary is about the tensorboard. It exports the information about the model
                 #tf.summary.scalar("model/policy_loss", pi_loss / bs)
                 #tf.summary.scalar("model/value_loss", vf_loss / bs)
@@ -273,6 +276,10 @@ class A3C(object):
                 #tf.summary.scalar("model/grad_global_norm", tf.global_norm(grads))
                 #tf.summary.scalar("model/var_global_norm", tf.global_norm(pi.var_list))
                 self.summary_op = tf.summary.merge_all()
+            else:
+                tf.summary.scalar("model/policy_loss", pi_loss / bs)
+                self.summary_op = tf.summary.merge_all()
+                
 			
 			# clipping to avoid the exploding or vanishing gradient values
             grads, _ = tf.clip_by_global_norm(grads, 40.0)
