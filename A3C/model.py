@@ -67,15 +67,10 @@ class LSTMPolicy(object):
     	# x is the input images with dimension [batchsize, observation dimension]
     	# Pyhton syntax : a = b = 1. a and b have no reference or relationship.
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
-
-		# 4 layers of CNN 
-		# tf.nn.elu means Exponential Linear Units. Like Sigmoid and RELU, it is a kind of activation function
-        for i in range(4):
-            x = tf.nn.elu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
-            
-        # tf.expand_dims inserts a dimension of 1 into a tensor's shape
-        # introduce a "fake" batch dimension of 1 after flatten so that we can do LSTM over time dim
-        x = tf.expand_dims(flatten(x), [0])
+        conv1 = tf.contrib.layers.conv2d(x, 16, 8, 4, activation_fn=tf.nn.relu, scope="conv1")
+        conv2 = tf.contrib.layers.conv2d(conv1, 32, 4, 2, activation_fn=tf.nn.relu, scope="conv2")
+        fc1 = tf.contrib.layers.fully_connected(inputs=tf.contrib.layers.flatten(conv2), num_outputs=256, scope="fc1")
+        x = tf.expand_dims(fc1, [0])
 		
 		# size of h, the hidden state vector
         size = 256
