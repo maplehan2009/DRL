@@ -7,7 +7,7 @@ plt.style.use('ggplot')
 def moving_average(x):
 	x = list(x)
 	N = len(x)
-	window = 20
+	window = 200
 	x_new = []
 	for i in range(N-window):
 		x_new.append(np.mean(x[i:i+window]))
@@ -15,14 +15,14 @@ def moving_average(x):
 	return np.array(x_new)	
 
 if __name__=='__main__':
-	folders = ['Data_1level_A3C', 'Data_3level_A3C', 'Data_3level_energy_A3C', 'max_energy', 'denny']
+	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_denny', '1level_denny']
 	#game = 'pong'
 	#game = 'pacman'
 	game = 'breakout'
 	#game = 'spaceinvader'
 	#game = 'qbert'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [2, 4]
+	selected_folders = [0, 2, 3]
 	N_folders = len(selected_folders)
 	data = []
 	for i in selected_folders:

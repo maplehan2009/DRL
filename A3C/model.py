@@ -5,6 +5,7 @@ import distutils.version
 # use_tf100_api is a boolean flag : True means tf version is greater than 1.0.0
 # I am using the tf version 1.2.1
 use_tf100_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('1.0.0')
+openai = True
 
 ############################################################################################
 def normalized_columns_initializer(std=1.0):
@@ -67,10 +68,15 @@ class LSTMPolicy(object):
     	# x is the input images with dimension [batchsize, observation dimension]
     	# Pyhton syntax : a = b = 1. a and b have no reference or relationship.
         self.x = x = tf.placeholder(tf.float32, [None] + list(ob_space))
-        conv1 = tf.contrib.layers.conv2d(x, 16, 8, 4, activation_fn=tf.nn.relu, scope="conv1")
-        conv2 = tf.contrib.layers.conv2d(conv1, 32, 4, 2, activation_fn=tf.nn.relu, scope="conv2")
-        fc1 = tf.contrib.layers.fully_connected(inputs=tf.contrib.layers.flatten(conv2), num_outputs=256, scope="fc1")
-        x = tf.expand_dims(fc1, [0])
+        if openai:
+            for i in range(4):
+                x = tf.nn.relu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
+            x = tf.expand_dims(flatten(x), [0])
+        else:
+            conv1 = tf.contrib.layers.conv2d(x, 16, 8, 4, activation_fn=tf.nn.relu, scope="conv1")
+            conv2 = tf.contrib.layers.conv2d(conv1, 32, 4, 2, activation_fn=tf.nn.relu, scope="conv2")
+            fc1 = tf.contrib.layers.fully_connected(inputs=tf.contrib.layers.flatten(conv2), num_outputs=256, scope="fc1")
+            x = tf.expand_dims(fc1, [0])
 		
 		# size of h, the hidden state vector
         size = 256
