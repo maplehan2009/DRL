@@ -6,13 +6,10 @@ import tensorflow.contrib.rnn as rnn
 def lstm_cell():
 	return rnn.BasicLSTMCell(15, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
 
-# the height of the stacked LSTM is 3
-num_layers = 3
-
 # x is a placeholder for the input data with batchsize 1, dynamic sequence length and input data size 20
 x = tf.placeholder(tf.float32, [1, None, 20])
 # define a stacked LSTM network
-stacked_lstm = rnn.MultiRNNCell([lstm_cell() for _ in range(num_layers)], state_is_tuple=True)
+stacked_lstm = rnn.MultiRNNCell([lstm_cell() for _ in range(3)], state_is_tuple=True)
 state_size = stacked_lstm.state_size
 
 c0 = tf.placeholder(tf.float32, [1, state_size[0].c])
@@ -21,7 +18,6 @@ c1 = tf.placeholder(tf.float32, [1, state_size[1].c])
 h1 = tf.placeholder(tf.float32, [1, state_size[1].h])
 c2 = tf.placeholder(tf.float32, [1, state_size[2].c])
 h2 = tf.placeholder(tf.float32, [1, state_size[2].h])
-state_in = (rnn.LSTMStateTuple(c0, h0), rnn.LSTMStateTuple(c1, h1), rnn.LSTMStateTuple(c2, h2))
 
 step_size = tf.shape(x)[1]
 
@@ -78,5 +74,5 @@ c2_init = np.zeros((1, state_size[2].c), np.float32)
 h2_init = np.zeros((1, state_size[2].h), np.float32)
 
 # run the experiment
-pi, hh0, hh1, hh2 = sess.run([output, hidden0, hidden1, hidden2], {x : [xx], state_in[0].c : c0_init, state_in[1].c : c1_init, state_in[2].c : c2_init, state_in[0].h : h0_init, state_in[1].h : h1_init, state_in[2].h : h2_init})
+pi, hh0, hh1, hh2 = sess.run([output, hidden0, hidden1, hidden2], {x : [xx], c0: c0_init, c1 : c1_init, c2 : c2_init, h0 : h0_init, h1 : h1_init, h2 : h2_init})
 
