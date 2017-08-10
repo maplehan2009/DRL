@@ -54,10 +54,10 @@ def body(i, output_, h0_, h1_, h2_, c0_, c1_, c2_):
 	
 i, output, hidden0, hidden1, hidden2, cell0, cell1, cell2 = tf.while_loop(cond, body, [0, output_init, H_init0, H_init1, H_init2, C_init0, C_init1, C_init2])
 		
-output = output.stack()
-hidden0 = hidden0.stack()
-hidden1 = hidden1.stack()
-hidden2 = hidden2.stack()
+output = tf.reshape(output.stack(), (-1, 15))
+hidden0 = tf.reshape(hidden0.stack(), (-1, 15))
+hidden1 = tf.reshape(hidden1.stack(), (-1, 15))
+hidden2 = tf.reshape(hidden2.stack(), (-1, 15))
 
 # Initialise the graph
 init_op = tf.global_variables_initializer()
