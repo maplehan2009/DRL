@@ -6,7 +6,7 @@ from model import LSTMPolicy, LSTMPolicy_beta
 import six.moves.queue as queue
 import scipy.signal
 import threading
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features_h", "features"])
 
 # BETA True : use the three layers of LSTM with energy regularization
 # BETA False : use the simple one layer of LSTM without energy regularization
@@ -41,8 +41,10 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     # https://arxiv.org/abs/1506.02438
     batch_adv = discount(delta_t, gamma * lambda_)
 
+    #features_c = np.asarray([x[0] for x in rollout.features])
+    features_h = np.asarray([x[1] for x in rollout.features])
     features = rollout.features[0]
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features)
+    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features_h, features)
 
 ############################################################################################
 class PartialRollout(object):
@@ -347,7 +349,9 @@ class A3C(object):
 	        self.local_network.state_in[0][2]: batch.features[0][2:3],
 	        self.local_network.state_in[1][0]: batch.features[1][0:1],
 	        self.local_network.state_in[1][1]: batch.features[1][1:2],
-	        self.local_network.state_in[1][2]: batch.features[1][2:3]}
+	        self.local_network.state_in[1][2]: batch.features[1][2:3],
+	        self.local_network.h_aux: batch.features_h
+	        }
         else:
         	feed_dict = {
         	self.local_network.x: batch.si,
@@ -356,6 +360,7 @@ class A3C(object):
         	self.r: batch.r,
         	self.local_network.state_in[0]: batch.features[0],
         	self.local_network.state_in[1]: batch.features[1]}
+        	
         fetched = sess.run(fetches, feed_dict=feed_dict)
         if should_compute_summary:
         	self.summary_writer.add_summary(tf.Summary.FromString(fetched[0]), fetched[-1])
