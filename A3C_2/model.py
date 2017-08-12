@@ -62,7 +62,7 @@ def argmax_sample(logits, d):
     return tf.one_hot(np.argmax(logits), d)
 
 ############################################################################################
-class LSTMPolicy(object):
+class LSTMPolicy_alpha(object):
     def __init__(self, ob_space, ac_space):
     	# ob_space is the dimension of the observation pixels. ac_space is the action space dimension
     	# x is the input images with dimension [batchsize, observation dimension]
@@ -94,11 +94,8 @@ class LSTMPolicy(object):
         c_in = tf.placeholder(tf.float32, [1, lstm.state_size.c])
         h_in = tf.placeholder(tf.float32, [1, lstm.state_size.h])
         self.state_in = [c_in, h_in]
+        state_in = rnn.LSTMStateTuple(c_in, h_in)
 
-        if use_tf100_api:
-            state_in = rnn.LSTMStateTuple(c_in, h_in)
-        else:
-            state_in = rnn.rnn_cell.LSTMStateTuple(c_in, h_in)
         
         lstm_outputs, lstm_state = tf.nn.dynamic_rnn(lstm, x, initial_state=state_in, sequence_length=step_size, time_major=False)
         lstm_c, lstm_h = lstm_state

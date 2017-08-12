@@ -2,7 +2,7 @@ from __future__ import print_function
 from collections import namedtuple
 import numpy as np
 import tensorflow as tf
-from model import LSTMPolicy, LSTMPolicy_beta
+from model import LSTMPolicy_alpha, LSTMPolicy_beta, LSTMPolicy_gamma
 import six.moves.queue as queue
 import scipy.signal
 import threading
@@ -10,7 +10,8 @@ Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features_h", "f
 
 # BETA True : use the three layers of LSTM with energy regularization
 # BETA False : use the simple one layer of LSTM without energy regularization
-BETA = True
+BETA = False
+GAMMA = True
 
 ############################################################################################
 def discount(x, gamma):
@@ -204,8 +205,10 @@ class A3C(object):
             	# env.observation_space.shape is (42, 42, 1) by default
             	if BETA:
             		self.network = LSTMPolicy_beta(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            	elif GAMMA:
+            	    self.network = LSTMPolicy_gamma(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	else:
-            		self.network = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            		self.network = LSTMPolicy_alpha(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	self.global_step = tf.get_variable("global_step", [], tf.int32, initializer=tf.constant_initializer(0, dtype=tf.int32),
                                                    trainable=False)
 
@@ -214,8 +217,10 @@ class A3C(object):
             	# pi is a local network instead of the policy function
             	if BETA:
             		self.local_network = pi = LSTMPolicy_beta(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            	elif GAMMA:
+            	    self.local_network = pi = LSTMPolicy_gamma(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	else:
-            		self.local_network = pi = LSTMPolicy(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
+            		self.local_network = pi = LSTMPolicy_alpha(list(env.observation_space.shape[:-1]) + [4], env.action_space.n)
             	pi.global_step = self.global_step
                
 			# ac : action vector
@@ -241,7 +246,7 @@ class A3C(object):
             bs = tf.to_float(tf.shape(pi.x)[0])
             
             # option loss
-            if BETA:
+            if BETA or GAMMA:
                 h_loss_0 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][0])) - tf.reduce_sum(tf.square(pi.state_out[1][0:1])))
                 h_loss_1 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][1])) - tf.reduce_sum(tf.square(pi.state_out[1][1:2])))
                 h_loss_2 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][2])) - tf.reduce_sum(tf.square(pi.state_out[1][2:3])))
@@ -265,7 +270,7 @@ class A3C(object):
 			# Constructs symbolic partial derivatives of self.loss w.r.t. variable in pi.var_list
             grads = tf.gradients(self.loss, pi.var_list)
 
-            if BETA:
+            if BETA or GAMMA:
             	# summary is about the tensorboard. It exports the information about the model
                 #tf.summary.scalar("model/policy_loss", pi_loss / bs)
                 #tf.summary.scalar("model/value_loss", vf_loss / bs)
@@ -351,6 +356,19 @@ class A3C(object):
 	        self.local_network.state_in[1][1]: batch.features[1][1:2],
 	        self.local_network.state_in[1][2]: batch.features[1][2:3],
 	        self.local_network.h_aux: batch.features_h
+	        }
+        elif GAMMA:
+	        feed_dict = {
+    		self.local_network.x: batch.si,
+	        self.ac: batch.a,
+	        self.adv: batch.adv,
+	        self.r: batch.r,
+	        self.local_network.state_in[0][0]: batch.features[0][0:1],
+	        self.local_network.state_in[0][1]: batch.features[0][1:2],
+	        self.local_network.state_in[0][2]: batch.features[0][2:3],
+	        self.local_network.state_in[1][0]: batch.features[1][0:1],
+	        self.local_network.state_in[1][1]: batch.features[1][1:2],
+	        self.local_network.state_in[1][2]: batch.features[1][2:3],
 	        }
         else:
         	feed_dict = {
