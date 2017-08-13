@@ -6,7 +6,7 @@ from model import LSTMPolicy_alpha, LSTMPolicy_beta, LSTMPolicy_gamma
 import six.moves.queue as queue
 import scipy.signal
 import threading
-Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features_h", "features"])
+Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features_h0", "features_h1", "features_h2", "features"])
 
 # BETA True : use the three layers of LSTM with energy regularization
 # BETA False : use the simple one layer of LSTM without energy regularization
@@ -42,10 +42,11 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     # https://arxiv.org/abs/1506.02438
     batch_adv = discount(delta_t, gamma * lambda_)
 
-    #features_c = np.asarray([x[0] for x in rollout.features])
-    features_h = np.asarray([x[1] for x in rollout.features])
+    features_h0 = np.asarray([x[1][0] for x in rollout.features])
+    features_h1 = np.asarray([x[1][1] for x in rollout.features])
+    features_h2 = np.asarray([x[1][2] for x in rollout.features])
     features = rollout.features[0]
-    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features_h, features)
+    return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features_h0, features_h1, features_h2, features)
 
 ############################################################################################
 class PartialRollout(object):
@@ -246,13 +247,19 @@ class A3C(object):
             bs = tf.to_float(tf.shape(pi.x)[0])
             
             # option loss
-            if BETA or GAMMA:
+            if BETA:
                 h_loss_0 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][0])) - tf.reduce_sum(tf.square(pi.state_out[1][0:1])))
                 h_loss_1 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][1])) - tf.reduce_sum(tf.square(pi.state_out[1][1:2])))
                 h_loss_2 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][2])) - tf.reduce_sum(tf.square(pi.state_out[1][2:3])))
                 H_loss = 0.001 * h_loss_0 + 0.01 * h_loss_1 + 0.1 * h_loss_2
                 # Total Loss function, may tune the lambda value here.
                 self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy + H_loss
+            elif GAMMA:
+                h_loss_0 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][0])) - tf.reduce_sum(tf.square(pi.state_out[1][0])))
+                h_loss_1 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][1])) - tf.reduce_sum(tf.square(pi.state_out[1][1])))
+                h_loss_2 = tf.square(tf.reduce_sum(tf.square(pi.state_in[1][2])) - tf.reduce_sum(tf.square(pi.state_out[1][2])))
+                H_loss = 0.001 * h_loss_0 + 0.01 * h_loss_1 + 0.1 * h_loss_2
+                self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy + H_loss            
             else:
                 self.loss = pi_loss + 0.5 * vf_loss - 0.01 * entropy
 
@@ -331,7 +338,7 @@ class A3C(object):
 		and updates the parameters. The update is then sent to the parameter
 		server."""
 		
-		# copy weights from parameter server to local
+        size = self.local_network.size
         sess.run(self.sync)  
         rollout = self.pull_batch_from_queue()
         batch = process_rollout(rollout, gamma=0.99, lambda_=1.0)
@@ -363,12 +370,15 @@ class A3C(object):
 	        self.ac: batch.a,
 	        self.adv: batch.adv,
 	        self.r: batch.r,
-	        self.local_network.state_in[0][0]: batch.features[0][0:1],
-	        self.local_network.state_in[0][1]: batch.features[0][1:2],
-	        self.local_network.state_in[0][2]: batch.features[0][2:3],
-	        self.local_network.state_in[1][0]: batch.features[1][0:1],
-	        self.local_network.state_in[1][1]: batch.features[1][1:2],
-	        self.local_network.state_in[1][2]: batch.features[1][2:3],
+	        self.local_network.state_in[0][0]: batch.features[0][0],
+	        self.local_network.state_in[0][1]: batch.features[0][1],
+	        self.local_network.state_in[0][2]: batch.features[0][2],
+	        self.local_network.state_in[1][0]: batch.features[1][0],
+	        self.local_network.state_in[1][1]: batch.features[1][1],
+	        self.local_network.state_in[1][2]: batch.features[1][2],
+	        self.local_network.h_aux0: np.reshape(batch.features_h0, [-1, size]),
+	        self.local_network.h_aux1: np.reshape(batch.features_h1, [-1, size]),
+	        self.local_network.h_aux2: np.reshape(batch.features_h2, [-1, size])	        
 	        }
         else:
         	feed_dict = {
