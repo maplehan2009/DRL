@@ -15,14 +15,14 @@ def moving_average(x, steps):
 	return np.array(x_new), steps[:N-window]	
 
 if __name__=='__main__':
-	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_denny', '1level_denny', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII']
+	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_deepmind', '1level_deepmind', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII', '3level_openai']
 	#game = 'pong'
 	#game = 'pacman'
 	game = 'breakout'
 	#game = 'spaceinvaders'
 	#game = 'qbert'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [4, 0, 7]
+	selected_folders = [0, 4, 8]
 	N_folders = len(selected_folders)
 	data = []
 	for i in selected_folders:
@@ -34,11 +34,11 @@ if __name__=='__main__':
 
 	plt.figure(figsize=(8, 8))
 	plt.plot(*data, linewidth=0.8)
-	#plt.xlim(0, 0.5e7)
-	#plt.ylim(0, 30)
+	#plt.xlim(0, 2e7)
+	#plt.ylim(0, 100)
 	plt.xlabel('Step')
 	plt.ylabel('Episode Reward')
-	plt.title('Episode Reward v.s. Step of the game ' + game )
+	plt.title('Episode Reward v.s. Step of the game: ' + game )
 	
 	legend = []
 	for i in selected_folders:

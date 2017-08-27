@@ -11,14 +11,14 @@ def get_df(df, events):
 	return
 
 if __name__ == '__main__':
-	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_denny', '1level_denny', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII']
+	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_deepmind', '1level_deepmind', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII', '3level_openai']
 	#game = 'pong'
 	#game = 'pacman'
 	game = 'breakout'
 	#game = 'spaceinvaders'
 	#game = 'qbert'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [0, 4, 6, 7]
+	selected_folders = [0, 4, 8]
 	N_workers = 4
 	df = []
 		
