@@ -11,7 +11,7 @@ Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features_h0", "
 # BETA True : use the three layers of LSTM with energy regularization
 # BETA False : use the simple one layer of LSTM without energy regularization
 BETA = False
-GAMMA = True
+GAMMA = False
 
 ############################################################################################
 def discount(x, gamma):
@@ -41,10 +41,14 @@ def process_rollout(rollout, gamma, lambda_=1.0):
     # this formula for the advantage comes "Generalized Advantage Estimation":
     # https://arxiv.org/abs/1506.02438
     batch_adv = discount(delta_t, gamma * lambda_)
-
-    features_h0 = np.asarray([x[1][0] for x in rollout.features])
-    features_h1 = np.asarray([x[1][1] for x in rollout.features])
-    features_h2 = np.asarray([x[1][2] for x in rollout.features])
+    
+    if BETA or GAMMA:
+        features_h0 = np.asarray([x[1][0] for x in rollout.features])
+        features_h1 = np.asarray([x[1][1] for x in rollout.features])
+        features_h2 = np.asarray([x[1][2] for x in rollout.features])
+    else:
+        features_h0 = features_h1 = features_h2 = []
+        
     features = rollout.features[0]
     return Batch(batch_si, batch_a, batch_adv, batch_r, rollout.terminal, features_h0, features_h1, features_h2, features)
 

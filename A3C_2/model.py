@@ -81,6 +81,7 @@ class LSTMPolicy_alpha(object):
 		
 		# size of h, the hidden state vector
         size = 256
+        self.size = size
         lstm = rnn.BasicLSTMCell(size, state_is_tuple=True)
 
         # state_size has two fields: c and h
@@ -141,6 +142,7 @@ class LSTMPolicy_beta(object):
             #x = tf.expand_dims(x, [0])
         
         size = 256
+        self.size = size
         self.h_aux = tf.placeholder(tf.float32, [None, 3, size])
         h_aux = tf.reshape(self.h_aux, (-1, 3 * size))
         
