@@ -133,20 +133,15 @@ class LSTMPolicy_beta(object):
         if openai:
             for i in range(4):
                 x = tf.nn.relu(conv2d(x, 32, "l{}".format(i + 1), [3, 3], [2, 2]))
-            #x = tf.expand_dims(flatten(x), [0])
             x = flatten(x)
         else:
             conv1 = tf.contrib.layers.conv2d(x, 16, 8, 4, activation_fn=tf.nn.relu, scope="conv1")
             conv2 = tf.contrib.layers.conv2d(conv1, 32, 4, 2, activation_fn=tf.nn.relu, scope="conv2")
             x = tf.contrib.layers.fully_connected(inputs=tf.contrib.layers.flatten(conv2), num_outputs=256, scope="fc1")
-            #x = tf.expand_dims(x, [0])
-        
+            
         size = 256
         self.size = size
-        self.h_aux = tf.placeholder(tf.float32, [None, 3, size])
-        h_aux = tf.reshape(self.h_aux, (-1, 3 * size))
-        
-        x = tf.concat([x, h_aux], 1)
+
         x = tf.expand_dims(x, [0])
         
         def lstm_cell():
@@ -192,18 +187,16 @@ class LSTMPolicy_beta(object):
 
     def act(self, x, c, h):
         sess = tf.get_default_session()
-        h_ = np.reshape(h, [1, 3, -1])
         return sess.run([self.sample, self.vf] + self.state_out,
                         {self.x: [x], self.state_in[0][0]: c[0:1], self.state_in[0][1]: c[1:2], 
                         self.state_in[0][2]: c[2:3], self.state_in[1][0]: h[0:1], 
-                        self.state_in[1][1]: h[1:2], self.state_in[1][2]: h[2:3], self.h_aux: h_})
+                        self.state_in[1][1]: h[1:2], self.state_in[1][2]: h[2:3]})
 
     def value(self, x, c, h):
         sess = tf.get_default_session()
-        h_ = np.reshape(h, [1, 3, -1])
         return sess.run(self.vf, {self.x: [x], self.state_in[0][0]: c[0:1], self.state_in[0][1]: c[1:2], 
                         self.state_in[0][2]: c[2:3], self.state_in[1][0]: h[0:1], 
-                        self.state_in[1][1]: h[1:2], self.state_in[1][2]: h[2:3], self.h_aux: h_})[0]
+                        self.state_in[1][1]: h[1:2], self.state_in[1][2]: h[2:3]})[0]
                    
 #############################################################################################################
 class LSTMPolicy_gamma(object):

@@ -10,7 +10,7 @@ Batch = namedtuple("Batch", ["si", "a", "adv", "r", "terminal", "features_h0", "
 
 # BETA True : use the three layers of LSTM with energy regularization
 # BETA False : use the simple one layer of LSTM without energy regularization
-BETA = False
+BETA = True
 GAMMA = False
 
 ############################################################################################
@@ -365,8 +365,7 @@ class A3C(object):
 	        self.local_network.state_in[0][2]: batch.features[0][2:3],
 	        self.local_network.state_in[1][0]: batch.features[1][0:1],
 	        self.local_network.state_in[1][1]: batch.features[1][1:2],
-	        self.local_network.state_in[1][2]: batch.features[1][2:3],
-	        self.local_network.h_aux: batch.features_h
+	        self.local_network.state_in[1][2]: batch.features[1][2:3]
 	        }
         elif GAMMA:
 	        feed_dict = {
