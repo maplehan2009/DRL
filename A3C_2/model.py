@@ -144,10 +144,10 @@ class LSTMPolicy_beta(object):
 
         x = tf.expand_dims(x, [0])
         
-        def lstm_cell():
-            return rnn.BasicLSTMCell(size, forget_bias=0.0, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
+        def lstm_cell(fb):
+            return rnn.BasicLSTMCell(size, forget_bias=fb, state_is_tuple=True, reuse=tf.get_variable_scope().reuse)
         
-        stacked_lstm = rnn.MultiRNNCell([lstm_cell() for _ in range(3)], state_is_tuple=True)
+        stacked_lstm = rnn.MultiRNNCell([lstm_cell(1.0), lstm_cell(1.0), lstm_cell(1.0)], state_is_tuple=True)
         state_size = stacked_lstm.state_size
         self.state_size = state_size
         step_size = tf.shape(self.x)[0:1]
