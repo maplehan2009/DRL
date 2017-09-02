@@ -2,11 +2,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow.contrib.rnn as rnn
 import distutils.version
-# use_tf100_api is a boolean flag : True means tf version is greater than 1.0.0
-# I am using the tf version 1.2.1
-use_tf100_api = distutils.version.LooseVersion(tf.VERSION) >= distutils.version.LooseVersion('1.0.0')
 openai = True
-
 
 ############################################################################################
 def normalized_columns_initializer(std=1.0):
