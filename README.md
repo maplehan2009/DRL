@@ -16,4 +16,4 @@ https://www.overleaf.com/read/vvvqxqbbtjck
 
 Command to run the A3C agent:
 
-`python train.py --num-workers 2 --env-id PongDeterministic-v3 --log-dir ~/DRL/A3C/pong`
+`python train.py --num-workers 4 --env-id PongDeterministic-v3 --log-dir ~/DRL/A3C/pong`
