@@ -23,7 +23,7 @@ if __name__=='__main__':
 	#game = 'seaquest'
 	#game = 'qbert'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [0, 10, 11]
+	selected_folders = [0, 10, 11, 12]
 	N_folders = len(selected_folders)
 	data = []
 	for i in selected_folders:

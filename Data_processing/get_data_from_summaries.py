@@ -19,7 +19,7 @@ if __name__ == '__main__':
 	#game = 'seaquest'
 	#game = 'qbert'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [10, 11]
+	selected_folders = [10, 11, 12]
 	N_workers = 4
 	df = []
 		
