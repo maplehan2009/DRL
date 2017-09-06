@@ -15,7 +15,7 @@ def my_GMM(x):
     return np.argmax(scores) + 1
     
 def my_VGMM(x):
-    n_clusters = 256
+    n_clusters = 20
     my_vgmm = BayesianGaussianMixture(n_components = n_clusters, max_iter = 2000).fit(x)
     weights = my_vgmm.weights_
     weights.sort()
@@ -45,7 +45,7 @@ if __name__ == '__main__':
     E0 = (df['energy0'].values).reshape(-1, 1)
     E1 = (df['energy1'].values).reshape(-1, 1)
     E2 = (df['energy2'].values).reshape(-1, 1)
-    
+
     # Kmeans 
     kmeans0 = KMeans().fit(E0)
     kmeans1 = KMeans().fit(E1)
