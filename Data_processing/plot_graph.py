@@ -18,12 +18,13 @@ if __name__=='__main__':
 	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_deepmind', '1level_deepmind', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII', '3level_openai', '1level_openai_slowlr',
 '3level_energy_openai_fb_111', '3level_energy_openai_fb_013', '3level_energy_openai_fb_310']
 	#game = 'pong'
-	game = 'breakout'
-	#game = 'spaceinvaders'
+	#game = 'breakout'
+	game = 'spaceinvaders'
 	#game = 'seaquest'
 	#game = 'qbert'
+	#game = 'montezuma'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [0, 10, 11, 12]
+	selected_folders = [0, 4, 7]
 	N_folders = len(selected_folders)
 	data = []
 	for i in selected_folders:
@@ -35,7 +36,7 @@ if __name__=='__main__':
 
 	plt.figure(figsize=(8, 8))
 	plt.plot(*data, linewidth=0.8)
-	plt.xlim(0, 3e7)
+	plt.xlim(0, 7e7)
 	#plt.ylim(0, 120)
 	plt.xlabel('Step')
 	plt.ylabel('Episode Reward')

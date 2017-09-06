@@ -17,29 +17,27 @@ def get_df(df, events0, events1, events2):
 	df.loc[:, tags[3]] = E2
 	return
 
-def my_plot(E, i, j, name):
-    plt.figure(figsize=(8, 8))
-    plt.hist(E[i:j], bins=200)
-    plt.xlabel('Energy')
-    plt.ylabel('Frequency')
-    plt.title('Histogram of the Option ' + name + ' energy, ' + game )
-    plt.savefig(PATH + folders[my_index] +  '_energy'+ name + '_' + str(i) +'.eps', format='eps', dpi=1000)    
-
+ 
 def plot_series_E(E, name):
-    my_plot(E, 0, int(N / 4), name)
-    my_plot(E, int(N / 4), int(N / 2), name)
-    my_plot(E, int(N / 2), int(N * 0.75), name)
-    my_plot(E, int(N * 0.75), N, name)   
+    f, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2,  sharex=True, sharey=True)
+    f.set_size_inches(8, 8)
+    ax1.hist(E[0:int(N / 4)], bins=150)
+    ax1.set_title('Energy Evolution of option ' + name)
+    ax2.hist(E[int(N / 4) : int(N / 2)], bins=150)
+    ax3.hist(E[int(N / 2) : int(N * 0.75)], bins=150)
+    ax4.hist(E[int(N * 0.75) : N], bins=150)
+
+    f.savefig(PATH + folders[my_index] +  '_energy_'+ name + '.eps', format='eps', dpi=1000)   
 
 if __name__ == '__main__':
     # Load the energy data
     folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_denny', '1level_denny', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII']
-    #game = 'pong'
-    #game = 'pacman'
-    #game = 'breakout'
+
+    game = 'breakout'
     #game = 'spaceinvaders'
     #game = 'qbert'
-    game = 'seaquest'
+    #game = 'montezuma'
+    #game = 'seaquest'
     PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
     my_index = int(sys.argv[1])
     sg = {event_accumulator.COMPRESSED_HISTOGRAMS: 1,
@@ -68,9 +66,9 @@ if __name__ == '__main__':
     E1 = df['energy1'].values
     E2 = df['energy2'].values
     
-    plot_series_E(E0, '0')
-    plot_series_E(E1, '1')
-    plot_series_E(E2, '2')
+    plot_series_E(E0, '1')
+    plot_series_E(E1, '2')
+    plot_series_E(E2, '3')
 
      
 
