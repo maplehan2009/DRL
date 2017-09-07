@@ -12,15 +12,15 @@ def get_df(df, events):
 
 if __name__ == '__main__':
 	folders = ['3level_energy_openai', '3level_maxenergy_openai', '3level_energy_deepmind', '1level_deepmind', '1level_openai', '1level_openai_argmaxsample', '3level_energy_openai_hinputI', '3level_energy_openai_hinputII', '3level_openai', '1level_openai_slowlr',
-'3level_energy_openai_fb_111', '3level_energy_openai_fb_013', '3level_energy_openai_fb_310']
-	#game = 'pong'
+'3level_energy_openai_fb_111', '3level_energy_openai_fb_013', '3level_energy_openai_fb_310', '1level_openai_bf0', 'improved']
+
 	#game = 'breakout'
 	game = 'spaceinvaders'
 	#game = 'seaquest'
 	#game = 'qbert'
 	#game = 'montezuma'
 	PATH = '/home/jingtao/Work/DRL_Data/' + game + '/'
-	selected_folders = [0, 4, 7]
+	selected_folders = [7, 14]
 	N_workers = 4
 	df = []
 		
